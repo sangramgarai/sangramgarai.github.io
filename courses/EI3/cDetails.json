@@ -1,0 +1,16 @@
+{
+    "id": "EI3",
+    "registered": 1,
+    "eName": "ICAR-JRF",
+    "tName": "Plant Science",
+    "title": "Microbiology",
+    "about": "Microbiology basics",
+    "description": "This course is for ICAR-JRF Plant science aspirants. In this test series we have covered questions from Unit 1: History of Microbial World Microbial world, History of microbiology and types of micro-organisms, Prokaryotic and eukaryotic cell, Classification and major characteristics of different microbial groups. Morphological characteristics, Internal structures and their functions in bacteria, archaea, algae, cyanophages, viroids, prions, fungi, actinobacteria, mycoplasma, rickettsias, chlamydia, viruses, bacteriophages. Basics of microbial growth and reproduction, Bacterial communication, Environmental and nutritional requirements for microbial growth, Pure cultures, Control of microorganisms: Principles, methods including radiation, Chemicals, Antibiotics etc. Classification of fungi. Life cycles of important phytopathogenic fungi. Economic mycology, edible fungi and entomogenous fungi. Mycorrhizal associations. Cell organelles, their morphology, functions and chemical composition. Unit 2: Basic Microbiological Techniques, An introduction to laboratory instruments, Safety rules in laboratory, Handling of different glassware. Methods of sterilization and disinfection. Handling of autoclave, Hot air oven, BOD incubator, Laminar flow, Colony counter, pH meter, Biological filters; Spectrophotometer. Isolation and preservation of different types of microorganisms; Microscopy: Light, Compound, Dark field, Phase Contrast, Fluorescent, EM, TEM, SEM ; Wet mount, Hanging drop technique, Stains and staining techniques. Types of culture and culture media, Inoculation techniques, Isolation of pure culture, Proof of purity of cultures, Maintenance and preservation of pure cultures, Culture collections. Identification of bacteria using biochemical tests, Introduction and importance of Bergey's Manual, Bioassay techniques, Antibiotic sensitivity of bacteria. Isolation of Genomic DNA and PCR amplification in bacteria and cyanobacteria, RAPD and RFLP, Isolation of plasmids, Protein profiling by SDS-PAGE.",
+    "price": 50,
+    "rating": 4.3,
+    "bestSeller": false,
+    "language": ["English"],
+    "tests": [
+        ["Level 1", 20, 20]
+    ]
+}
