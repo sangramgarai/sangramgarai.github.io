@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Meal Orders to Excel</title>
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f4f6f8;
+      margin: 0;
+      padding: 40px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      background-color: #fff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      max-width: 500px;
+      width: 100%;
+    }
+
+    h2 {
+      margin-top: 0;
+      color: #2c3e50;
+    }
+
+    label {
+      font-weight: 600;
+      display: block;
+      margin-top: 20px;
+      margin-bottom: 8px;
+    }
+
+    input[type="file"],
+    select,
+    button {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      margin-bottom: 20px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    select {
+      height: 160px;
+    }
+
+    button {
+      background-color: #0078d4;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #005fa3;
+    }
+
+    #dateSection {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Export Meal Orders to Excel</h2>
+    <label for="jsonFile">Upload JSON File</label>
+    <input type="file" id="jsonFile" accept=".json">
+
+    <div id="dateSection">
+      <label for="dateSelect">Select Dates (Ctrl/Cmd + Click for multiple)</label>
+      <select id="dateSelect" multiple></select>
+      <button onclick="exportToExcel()">Download Excel File</button>
+    </div>
+  </div>
+
+  <script>
+    let parsedData = {};
+
+    document.getElementById("jsonFile").addEventListener("change", function(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          parsedData = JSON.parse(e.target.result);
+          populateDateOptions(parsedData);
+        } catch (err) {
+          alert("Invalid JSON file.");
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    function populateDateOptions(data) {
+      const dateSelect = document.getElementById("dateSelect");
+      dateSelect.innerHTML = "";
+
+      Object.keys(data).forEach(key => {
+        if (!["masterMenu", "members", "lunchOff", "dinnerOff"].includes(key)) {
+          const option = document.createElement("option");
+          option.value = key;
+          option.textContent = key;
+          dateSelect.appendChild(option);
+        }
+      });
+
+      document.getElementById("dateSection").style.display = "block";
+    }
+
+    function exportToExcel() {
+      const selectedDates = Array.from(document.getElementById("dateSelect").selectedOptions).map(opt => opt.value);
+      const { masterMenu, members, lunchOff, dinnerOff } = parsedData;
+      const itemCodes = Object.keys(masterMenu).sort();
+      const itemTitles = itemCodes.map(code => masterMenu[code].title);
+
+      const workbook = XLSX.utils.book_new();
+
+      selectedDates.forEach(date => {
+        const accounts = parsedData[date];
+        const lunchOffList = lunchOff?.[date]?.map(String) || [];
+        const dinnerOffList = dinnerOff?.[date]?.map(String) || [];
+
+        const header = ["Member Name", "Account", "Lunch", "Dinner", ...itemTitles];
+        const sheetData = [header];
+
+        for (const acc in members) {
+          const name = members[acc];
+          const lunch = lunchOffList.includes(acc) ? "" : "1";
+          const dinner = dinnerOffList.includes(acc) ? "" : "1";
+          const row = [name, acc, lunch, dinner];
+
+          itemCodes.forEach(code => {
+            row.push(accounts?.[acc]?.[code] || "");
+          });
+
+          sheetData.push(row);
+        }
+
+        const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+        XLSX.utils.book_append_sheet(workbook, worksheet, date);
+      });
+const summarySheet = [];
+const summaryHeader = ["Member Name", "Account", "Total Lunches", "Total Dinners", ...itemTitles];
+summarySheet.push(summaryHeader);
+
+const memberKeys = Object.keys(members);
+
+memberKeys.forEach((acc, index) => {
+  const name = members[acc];
+  const row = [name, acc];
+
+  // Lunch count formula
+  const lunchFormula = selectedDates.map(date => `IF('${date}'!C${index + 2}="1",1,0)`).join("+");
+  row.push({ f: lunchFormula });
+
+  // Dinner count formula
+  const dinnerFormula = selectedDates.map(date => `IF('${date}'!D${index + 2}="1",1,0)`).join("+");
+  row.push({ f: dinnerFormula });
+
+  // Item quantity formulas
+  itemCodes.forEach((code, i) => {
+    const colIndex = i + 4; // Adjusted for columns before items
+    const itemSumFormula = selectedDates.map(date => `'${date}'!${XLSX.utils.encode_col(colIndex)}${index + 2}`).join("+");
+    row.push({ f: itemSumFormula });
+  });
+
+  summarySheet.push(row);
+});
+
+const summaryWorksheet = XLSX.utils.aoa_to_sheet(summarySheet);
+XLSX.utils.book_append_sheet(workbook, summaryWorksheet, "Summary");
+
+
+  row.push({ f: totalPriceFormulaParts.join("+") });
+  summarySheet.push(row);
+}
+
+const summaryWorksheet = XLSX.utils.aoa_to_sheet(summarySheet);
+XLSX.utils.book_append_sheet(workbook, summaryWorksheet, "Summary");
+
+      XLSX.writeFile(workbook, "Selected_Dates.xlsx");
+    }
+  </script>
+</body>
+</html>
