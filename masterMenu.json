@@ -39,6 +39,7 @@
     "CH": { "title": "Chana", "price": 0 },
     "PC": { "title": "Chana Sabzi", "price": 0 },
     "CK": { "title": "Chole Kulcha", "price": 0 },
+    "CL": { "title": "Chila", "price": 0 },
     "CR": { "title": "Corn Sandwich", "price": 18 },
     "CT": { "title": "Custard", "price": 25 },
     "DA": { "title": "Dalia", "price": 8 },
@@ -54,6 +55,7 @@
     "GG": { "title": "Gol Gappe", "price": 0 },
     "HW": { "title": "Halwa", "price": 10 },
     "ID": { "title": "Idli", "price": 0 },
+    "JB": { "title": "Jilebi", "price": 0 },
     "KC": { "title": "Kachori", "price": 0 },
     "KH": { "title": "Kheer", "price": 25 },
     "LA": { "title": "Lassi", "price": 12 },
@@ -61,6 +63,7 @@
     "MG": { "title": "Maggie", "price": 20},
     "NS": { "title": "Namkeen Sewai", "price": 12 },
     "ND": { "title": "Noodles", "price": 12 },
+    "PA": { "title": "Pasta", "price": 12 },
     "PH": { "title": "Poha", "price": 12 },
     "PK": { "title": "Pav Bhaji", "price": 0 },
     "PN": { "title": "Paneer Paratha", "price": 40 },
@@ -75,6 +78,6 @@
     "UP": { "title": "Upma", "price": 10 },
     "UT": { "title": "Uttapam", "price": 0 },
     "VA": { "title": "Vada", "price": 0 },
+    "VP": { "title": "Vada Pao", "price": 0 },
     "VR": { "title": "Veg Roll", "price": 0 }
-
 }
