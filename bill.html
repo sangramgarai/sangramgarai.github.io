@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>Meal Orders to Excel</title>
@@ -18,7 +19,7 @@
       background-color: #fff;
       padding: 30px;
       border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
       max-width: 500px;
       width: 100%;
     }
@@ -67,6 +68,7 @@
     }
   </style>
 </head>
+
 <body>
   <div class="container">
     <h2>Export Meal Orders to Excel</h2>
@@ -83,12 +85,12 @@
   <script>
     let parsedData = {};
 
-    document.getElementById("jsonFile").addEventListener("change", function(event) {
+    document.getElementById("jsonFile").addEventListener("change", function (event) {
       const file = event.target.files[0];
       if (!file) return;
 
       const reader = new FileReader();
-      reader.onload = function(e) {
+      reader.onload = function (e) {
         try {
           parsedData = JSON.parse(e.target.result);
           populateDateOptions(parsedData);
@@ -123,6 +125,7 @@
 
       const workbook = XLSX.utils.book_new();
 
+      // Date sheets
       selectedDates.forEach(date => {
         const accounts = parsedData[date];
         const lunchOffList = lunchOff?.[date]?.map(String) || [];
@@ -131,63 +134,94 @@
         const header = ["Member Name", "Account", "Lunch", "Dinner", ...itemTitles];
         const sheetData = [header];
 
-        for (const acc in members) {
+        Object.keys(members).forEach((acc, index) => {
           const name = members[acc];
-          const lunch = lunchOffList.includes(acc) ? "" : "1";
-          const dinner = dinnerOffList.includes(acc) ? "" : "1";
+          const lunch = lunchOffList.includes(acc) ? "" : 1;
+          const dinner = dinnerOffList.includes(acc) ? "" : 1;
           const row = [name, acc, lunch, dinner];
 
           itemCodes.forEach(code => {
-            row.push(accounts?.[acc]?.[code] || "");
+            const quantity = accounts?.[acc]?.[code];
+            row.push(quantity > 0 ? quantity : "");
           });
 
           sheetData.push(row);
-        }
+        });
 
         const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
         XLSX.utils.book_append_sheet(workbook, worksheet, date);
       });
-const summarySheet = [];
-const summaryHeader = ["Member Name", "Account", "Total Lunches", "Total Dinners", ...itemTitles];
-summarySheet.push(summaryHeader);
 
-const memberKeys = Object.keys(members);
+      // Summary sheet
+      const summarySheet = [];
+      const summaryHeader = ["Member Name", "Account", "Total Lunches", "Total Dinners", ...itemTitles];
+      summarySheet.push(summaryHeader);
 
-memberKeys.forEach((acc, index) => {
-  const name = members[acc];
-  const row = [name, acc];
+      Object.keys(members).forEach((acc, index) => {
+        const name = members[acc];
+        const row = [name, acc];
 
-  // Lunch count formula
-  const lunchFormula = selectedDates.map(date => `IF('${date}'!C${index + 2}="1",1,0)`).join("+");
-  row.push({ f: lunchFormula });
+        const lunchFormula = selectedDates.map(date => `'${date}'!C${index + 2}`).join("+");
+        const dinnerFormula = selectedDates.map(date => `'${date}'!D${index + 2}`).join("+");
+        row.push({ f: lunchFormula });
+        row.push({ f: dinnerFormula });
 
-  // Dinner count formula
-  const dinnerFormula = selectedDates.map(date => `IF('${date}'!D${index + 2}="1",1,0)`).join("+");
-  row.push({ f: dinnerFormula });
+        itemCodes.forEach((code, i) => {
+          const col = XLSX.utils.encode_col(i + 4);
+          const itemFormula = selectedDates.map(date => `'${date}'!${col}${index + 2}`).join("+");
+          row.push({ f: itemFormula });
+        });
 
-  // Item quantity formulas
-  itemCodes.forEach((code, i) => {
-    const colIndex = i + 4; // Adjusted for columns before items
-    const itemSumFormula = selectedDates.map(date => `'${date}'!${XLSX.utils.encode_col(colIndex)}${index + 2}`).join("+");
-    row.push({ f: itemSumFormula });
-  });
+        summarySheet.push(row);
+      });
 
-  summarySheet.push(row);
-});
+      const summaryWorksheet = XLSX.utils.aoa_to_sheet(summarySheet);
+      XLSX.utils.book_append_sheet(workbook, summaryWorksheet, "Summary");
 
-const summaryWorksheet = XLSX.utils.aoa_to_sheet(summarySheet);
-XLSX.utils.book_append_sheet(workbook, summaryWorksheet, "Summary");
+      // Bill sheet
+      const billSheet = [];
+      const rateRow = ["Rate", "", "", "", ...itemCodes.map(code => masterMenu[code].price || 0), "", "", ""];
+      billSheet.push(rateRow);
 
+      const billHeader = ["Member Name", "Account", "Total Lunches", "Total Dinners", ...itemTitles, "Total Meals", "Misc", "Establishment", "Total Bill"];
+      billSheet.push(billHeader);
 
-  row.push({ f: totalPriceFormulaParts.join("+") });
-  summarySheet.push(row);
-}
+      Object.keys(members).forEach((acc, index) => {
+        const summaryRow = index + 2;
+        const billRow = index + 3;
 
-const summaryWorksheet = XLSX.utils.aoa_to_sheet(summarySheet);
-XLSX.utils.book_append_sheet(workbook, summaryWorksheet, "Summary");
+        const row = [
+          { f: `Summary!A${summaryRow}` },
+          { f: `Summary!B${summaryRow}` },
+          { f: `Summary!C${summaryRow}` },
+          { f: `Summary!D${summaryRow}` }
+        ];
+
+        itemCodes.forEach((code, i) => {
+          const col = XLSX.utils.encode_col(i + 4);
+          row.push({ f: `Summary!${col}${summaryRow}` });
+        });
+
+        row.push({ f: `C${billRow}+D${billRow}` });
+
+        const miscFormula = itemCodes.map((code, i) => {
+          const col = XLSX.utils.encode_col(i + 4);
+          return `${col}1*${col}${billRow}`;
+        }).join("+");
+        row.push({ f: miscFormula });
+
+        row.push(1000); // Establishment fee
+        row.push("");   // Leave Total Bill blank
+
+        billSheet.push(row);
+      });
+
+      const billWorksheet = XLSX.utils.aoa_to_sheet(billSheet);
+      XLSX.utils.book_append_sheet(workbook, billWorksheet, "Bill");
 
       XLSX.writeFile(workbook, "Selected_Dates.xlsx");
     }
   </script>
 </body>
+
 </html>
