@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Account Meal Summary</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    #csvFile {
+      margin-bottom: 20px;
+    }
+    .page {
+      border: 1px solid #ccc;
+      padding: 20px;
+      margin-bottom: 40px;
+      page-break-after: always;
+    }
+    h2 {
+      margin-top: 0;
+      text-align: center;
+    }
+    .columns {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .column {
+      width: 32%;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 4px;
+      font-size: 12px;
+      text-align: left;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+    @media print {
+      #csvFile {
+        display: none;
+      }
+      .page {
+        page-break-after: always;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<input type="file" id="csvFile" accept=".csv">
+<div id="output"></div>
+
+<script>
+document.getElementById('csvFile').addEventListener('change', function (e) {
+  const reader = new FileReader();
+  reader.onload = function () {
+    const lines = reader.result.split('\n').filter(line => line.trim());
+    const headers = lines[0].split(',');
+    const rows = lines.slice(1).map(line => line.split(','));
+
+    const output = document.getElementById('output');
+    output.innerHTML = '';
+
+    rows.forEach(row => {
+      const page = document.createElement('div');
+      page.className = 'page';
+
+      const name = row[0];
+      const account = row[1];
+      page.innerHTML = `<h2>${name} (Account ${account})</h2>`;
+
+      const columns = document.createElement('div');
+      columns.className = 'columns';
+
+      const itemsPerColumn = Math.ceil((headers.length - 2) / 3); // Skip first two columns
+
+      for (let col = 0; col < 3; col++) {
+        const column = document.createElement('div');
+        column.className = 'column';
+        const table = document.createElement('table');
+        const tbody = document.createElement('tbody');
+
+        for (let i = 2 + col * itemsPerColumn; i < 2 + (col + 1) * itemsPerColumn && i < headers.length; i++) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<th>${headers[i]}</th><td>${row[i]}</td>`;
+          tbody.appendChild(tr);
+        }
+
+        table.appendChild(tbody);
+        column.appendChild(table);
+        columns.appendChild(column);
+      }
+
+      page.appendChild(columns);
+      output.appendChild(page);
+    });
+  };
+  reader.readAsText(e.target.files[0]);
+});
+</script>
+
+</body>
+</html>
