@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mess Account Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 650px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        h2 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid #dddddd;
+        }
+        th {
+            background-color: #2c3e50;
+            color: white;
+        }
+        input[type="number"] {
+            width: 100%;
+            padding: 6px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            text-align: right;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .bold {
+            font-weight: bold;
+        }
+        .loss {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .profit {
+            color: #27ae60;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Mess Account Calculator</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Particulars / Formula</th>
+                <th class="text-right">Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Total collection from previous mess (A)</td>
+                <td><input type="number" id="a" value="461624" oninput="calculate()"></td>
+            </tr>
+            <tr>
+                <td>Collection from guest + fine (B)</td>
+                <td><input type="number" id="b" value="12202" oninput="calculate()"></td>
+            </tr>
+            <tr class="bold">
+                <td>Net collection (A+B)</td>
+                <td class="text-right" id="net_collection">473826</td>
+            </tr>
+            <tr>
+                <td>Net expenditure (G)</td>
+                <td><input type="number" id="g" value="565724" oninput="calculate()"></td>
+            </tr>
+            <tr>
+                <td>Expenditure recovery from establishment (H)</td>
+                <td><input type="number" id="h" value="152640" oninput="calculate()"></td>
+            </tr>
+            <tr>
+                <td>Breakfast/Snacks (I) & Miscellaneous (J)</td>
+                <td><input type="number" id="ij" value="168310" oninput="calculate()"></td>
+            </tr>
+            <tr class="bold">
+                <td>Total (K = H + I + J)</td>
+                <td class="text-right" id="total_k">320950</td>
+            </tr>
+            <tr class="bold">
+                <td>Y = G - K</td>
+                <td class="text-right" id="y_val">244774</td>
+            </tr>
+            <tr>
+                <td>Total No. of Diets (Z)</td>
+                <td><input type="number" id="z" value="5137" oninput="calculate()"></td>
+            </tr>
+            <tr class="bold">
+                <td>Diet Rate (Y / Z)</td>
+                <td class="text-right" id="diet_rate">47.65</td>
+            </tr>
+            <tr>
+                <td>Effective Diet Rate (EDR) Adjustment Addition/Extra</td>
+                <td><input type="number" id="edr_add" value="3.00" step="0.01" oninput="calculate()"></td>
+            </tr>
+            <tr class="bold">
+                <td>Effective diet rate (EDR)</td>
+                <td class="text-right" id="edr">50.65</td>
+            </tr>
+            <tr class="bold">
+                <td>Loss / Profit</td>
+                <td class="text-right loss" id="loss_profit">-91898.00</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+function calculate() {
+    // Get input values
+    let a = parseFloat(document.getElementById('a').value) || 0;
+    let b = parseFloat(document.getElementById('b').value) || 0;
+    let g = parseFloat(document.getElementById('g').value) || 0;
+    let h = parseFloat(document.getElementById('h').value) || 0;
+    let ij = parseFloat(document.getElementById('ij').value) || 0;
+    let z = parseFloat(document.getElementById('z').value) || 0;
+    let edrAdd = parseFloat(document.getElementById('edr_add').value) || 0;
+
+    // Calculations
+    let netCollection = a + b;
+    let totalK = h + ij;
+    let y = g - totalK;
+    let dietRate = z > 0 ? y / z : 0;
+    let edr = dietRate + edrAdd;
+    
+    // Loss/Profit formula logic (Net Collection - Net Expenditure roughly, or based on standard matching your data)
+    // Your original data: Net Collection (473826) - Net Expenditure (565724) = -91898 Loss
+    let lossProfit = netCollection - g;
+
+    // Update DOM
+    document.getElementById('net_collection').innerText = netCollection.toFixed(2);
+    document.getElementById('total_k').innerText = totalK.toFixed(2);
+    document.getElementById('y_val').innerText = y.toFixed(2);
+    document.getElementById('diet_rate').innerText = dietRate.toFixed(2);
+    document.getElementById('edr').innerText = edr.toFixed(2);
+    
+    let lpElement = document.getElementById('loss_profit');
+    lpElement.innerText = lossProfit.toFixed(2);
+    if (lossProfit >= 0) {
+        lpElement.className = "text-right profit";
+        lpElement.innerText = "+" + lossProfit.toFixed(2);
+    } else {
+        lpElement.className = "text-right loss";
+    }
+}
+</script>
+
+</body>
+</html>
