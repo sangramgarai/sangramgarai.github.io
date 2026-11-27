@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>SangBase — Sanger Sequencing Analysis</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f172a'/%3E%3Cpath d='M8 46 Q16 46 20 22 T32 46 T44 16 T56 46' fill='none' stroke='%2322c55e' stroke-width='4' stroke-linecap='round'/%3E%3Cpath d='M8 46 Q20 46 26 28 T40 46 T52 24 T58 46' fill='none' stroke='%233b82f6' stroke-width='3.5' stroke-linecap='round' opacity='0.9'/%3E%3Cpath d='M8 46 Q14 34 22 46 T36 20 T48 46' fill='none' stroke='%23ef4444' stroke-width='3' stroke-linecap='round' opacity='0.85'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="app.js" defer></script>
+</head>
+<body>
+
+<!-- Drag & Drop Overlay -->
+<div class="drop-overlay" id="dropOverlay">
+  <h2>Drop .ab1 Chromatograms, .sangbase.json, or BLAST .xml</h2>
+  <p>100% local browser processing — files never leave your device</p>
+</div>
+
+<!-- Hidden File Inputs -->
+<input type="file" id="fileInputAb1" multiple accept=".ab1,.AB1" style="display:none" />
+<input type="file" id="fileInputProj" accept=".json,.sangbase.json" style="display:none" />
+<input type="file" id="fileInputBlastXml" accept=".xml,.csv,.tsv" style="display:none" />
+<input type="file" id="fileInputWtAb1" accept=".ab1,.AB1" style="display:none" />
+
+<!-- Top Navbar -->
+<header class="topbar">
+  <div class="topbar-group">
+    <div class="brand">
+      <svg viewBox="0 0 64 64">
+        <rect width="64" height="64" rx="14" fill="#0f172a"/>
+        <path d="M8 46 Q16 46 20 22 T32 46 T44 16 T56 46" fill="none" stroke="#22c55e" stroke-width="4" stroke-linecap="round"/>
+        <path d="M8 46 Q20 46 26 28 T40 46 T52 24 T58 46" fill="none" stroke="#3b82f6" stroke-width="3.5" stroke-linecap="round"/>
+        <path d="M8 46 Q14 34 22 46 T36 20 T48 46" fill="none" stroke="#ef4444" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+      <span>SangBase</span>
+      <span class="brand-sub">PWA v2.0</span>
+    </div>
+    <button onclick="newProject()" title="New Project (Ctrl+N)">New</button>
+    <button onclick="document.getElementById('fileInputProj').click()" title="Open .sangbase.json (Ctrl+O)">Open</button>
+    <button onclick="saveProjectDownload(false)" title="Save Project (Ctrl+S)">Save</button>
+    <button class="btn-primary" onclick="document.getElementById('fileInputAb1').click()" title="Import multiple .ab1 files (Ctrl+I)">+ Import .ab1</button>
+    <button onclick="loadDemoData()" title="Load 3 realistic synthetic binary .ab1 pairs">Demo Data</button>
+  </div>
+
+  <div class="topbar-group">
+    <button onclick="autoGroupSamples()" title="Smart Auto-Group F/R Pairs (Ctrl+M)">Auto-Group</button>
+    <button onclick="openDerepModal()" title="Find Identical / Near-Identical Consensuses">Dereplicate</button>
+    <button onclick="openPhyloModal()" title="Pairwise Identity Matrix & SVG Tree (Pro)">Matrix &amp; Tree <span class="pro-badge">PRO</span></button>
+    <button onclick="openPrimerModal()" title="Primer & Consensus Settings (Ctrl+,)">Settings</button>
+    <a class="btn" id="tutorialBtn" href="https://youtube.com" target="_blank" rel="noopener" title="Watch YouTube Tutorial">Tutorial</a>
+    <button onclick="openShortcutsModal()" title="Keyboard Shortcuts (F1 or ?)">?</button>
+    <button onclick="toggleTheme()" id="themeBtn" title="Toggle Dark/Light Theme">Light</button>
+    <button class="btn-pro" id="proBtn" onclick="openProModal()">Upgrade to Pro (₹99)</button>
+  </div>
+</header>
+
+<!-- Main Workspace -->
+<main class="workspace" id="workspace">
+  <!-- Left Pane: Project & Sample Table -->
+  <section class="pane-left">
+    <div class="pane-header">
+      <div class="pane-header-row">
+        <input type="text" id="projectNameInput" class="project-title-input" value="Untitled Sanger Project" onchange="state.projectName=this.value; persistDB();" />
+        <div class="btn-row-tight">
+          <button class="btn-sm" onclick="toggleAllGroups(true)" title="Expand All (Ctrl+])">Expand</button>
+          <button class="btn-sm" onclick="toggleAllGroups(false)" title="Collapse All (Ctrl+[)">Collapse</button>
+        </div>
+      </div>
+      <div class="pane-header-row">
+        <input type="text" id="tableFilter" placeholder="Filter samples, taxa, notes..." style="flex:1;" oninput="renderTable()" />
+        <button class="btn-sm" onclick="groupSelected()" title="Group 2 selected (Ctrl+G)">Group</button>
+        <button class="btn-sm" onclick="generateConsensusAll()" title="Generate Consensus for All (Shift+F5)">Cons All</button>
+        <button class="btn-sm btn-primary" onclick="openBatchExportModal()" title="Batch Export, GenBank & BLAST XML (Ctrl+Shift+E)">Batch</button>
+      </div>
+    </div>
+    <div class="table-wrap" id="tableWrap" tabindex="0">
+      <table class="sample-table">
+        <thead>
+          <tr>
+            <th style="width:30px;" onclick="sortTable('use')" title="Sort by Use (Ctrl+4)">Use</th>
+            <th onclick="sortTable('name')" title="Sort by Name (Ctrl+1)">Name</th>
+            <th style="width:42px;">Dir</th>
+            <th style="width:78px;">Len / Q</th>
+            <th style="width:82px;" onclick="sortTable('status')" title="Sort by Saved Sequence (Ctrl+3)">Consensus</th>
+            <th onclick="sortTable('notes')" title="Sort by Notes/Taxon (Ctrl+2)">Notes / BLAST ID</th>
+          </tr>
+        </thead>
+        <tbody id="sampleTableBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Resizer -->
+  <div class="resizer" id="resizer"></div>
+
+  <!-- Right Pane: Interactive Trace Viewer -->
+  <section class="pane-right" id="viewerPane">
+    <div class="empty-viewer" id="emptyViewer">
+      <svg width="64" height="64" viewBox="0 0 64 64">
+        <rect width="64" height="64" rx="14" fill="#1e293b"/>
+        <path d="M8 46 Q16 46 20 22 T32 46 T44 16 T56 46" fill="none" stroke="#22c55e" stroke-width="3.5" stroke-linecap="round"/>
+        <path d="M8 46 Q20 46 26 28 T40 46 T52 24 T58 46" fill="none" stroke="#3b82f6" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+      <h2>SangBase Chromatogram Workspace</h2>
+      <p style="max-width:440px;line-height:1.5;">Drop multiple <code>.ab1</code> files anywhere, import from disk, or load the 3 synthetic demo pairs to test Bayesian consensus calling, quality end-trimming, and smooth indel rendering.</p>
+      <div class="btn-row">
+        <button class="btn-primary" onclick="document.getElementById('fileInputAb1').click()">Import .ab1 Files</button>
+        <button onclick="loadDemoData()">Load Demo Data</button>
+      </div>
+    </div>
+
+    <div id="activeViewer" class="active-viewer">
+      <!-- Viewer Toolbar -->
+      <div class="viewer-toolbar">
+        <div class="toolbar-cluster">
+          <b id="viewerTitle" style="font-size:13px;">Sample</b>
+          <span class="active-row-pill" id="activeRowBadge" title="Switch with Ctrl+Up/Down">Row: Consensus</span>
+          <div class="segmented" id="viewModeButtons">
+            <button data-mode="1" onclick="setViewMode(1)" title="Aligned View (1)">1 Aligned</button>
+            <button data-mode="2" onclick="setViewMode(2)" title="Overlay View (2)">2 Overlay</button>
+            <button data-mode="3" onclick="setViewMode(3)" title="Independent View (3)">3 Indep</button>
+            <button data-mode="4" onclick="setViewMode(4)" title="Forward Only (4)">4 Fwd</button>
+            <button data-mode="5" onclick="setViewMode(5)" title="Reverse Only (5)">5 Rev</button>
+          </div>
+        </div>
+        <div class="toolbar-cluster">
+          <button class="btn-sm" onclick="adjustZoom(-2)" title="Zoom Out (Ctrl+-)">-</button>
+          <button class="btn-sm" onclick="resetZoom()" title="Reset Zoom (Ctrl+0)">100%</button>
+          <button class="btn-sm" onclick="adjustZoom(2)" title="Zoom In (Ctrl++)">+</button>
+          <button class="btn-sm" onclick="adjustAmp(-0.15)" title="Lower Amplitude (Down)">Amp-</button>
+          <button class="btn-sm" onclick="adjustAmp(0.15)" title="Raise Amplitude (Up)">Amp+</button>
+          <label class="inline-toggle" title="Automatically trim low-quality ends on consensus generation">
+            <input type="checkbox" id="autoTrimToggle" checked onchange="toggleAutoTrimSetting(this.checked)" />
+            Auto-Trim
+          </label>
+          <button class="btn-sm" onclick="autoTrimCurrent()" title="Trim low-quality ends (Ctrl+T)">Trim</button>
+          <button class="btn-sm" onclick="clipPrimersCurrent()" title="Clip matching 5'/3' primer/vector sequences">Clip Primers</button>
+          <button class="btn-sm" onclick="copyTrimmedConsensus()" title="Copy trimmed consensus (Ctrl+Shift+T)">Copy Trim</button>
+          <button class="btn-sm" onclick="toggleFindBar()" title="Find Primer/Motif (Ctrl+F)">Find</button>
+          <button class="btn-sm" onclick="openNotesModal(state.activeItemId)" title="Notes, BLAST & GenBank Modifiers (Ctrl+E)">Notes</button>
+          <button class="btn-sm btn-primary" onclick="openBlastModal()" title="Launch NCBI BLASTn">BLASTn</button>
+          <button class="btn-sm" onclick="downloadCurrentFasta()">FASTA</button>
+          <button class="btn-sm" onclick="openPrintReportModal()" title="Wrapped Multi-Row Printable / PDF Report">Print/PDF</button>
+          <button class="btn-sm" onclick="openPngModal()">PNG <span class="pro-badge">PRO</span></button>
+        </div>
+      </div>
+
+      <!-- Mismatch Warning Banner -->
+      <div class="warning-banner" id="mismatchBanner">
+        <div><strong>Low Overlap / Strands Do Not Match:</strong> <span id="mismatchText"></span> Automatically switched to Independent Trace Mode.</div>
+        <button class="btn-sm" onclick="setViewMode(1)">Force Aligned</button>
+      </div>
+
+      <!-- Sequence Stats Bar -->
+      <div class="stats-bar">
+        <div class="stats-group" id="statsGroup">
+          <div class="stat-item"><span>Length:</span><b id="statLen">0</b></div>
+          <div class="stat-item"><span>GC%:</span><b id="statGC">0%</b></div>
+          <div class="stat-item"><span>Ambig:</span><b id="statAmbig">0</b></div>
+          <div class="stat-item"><span>Mean Q:</span><b id="statMeanQ">0</b></div>
+          <div class="stat-item"><span>Q20/Q30:</span><b id="statQ2030">0% / 0%</b></div>
+          <div class="stat-item" id="statOverlapWrap" style="display:none;"><span>Overlap:</span><b id="statOverlap">-</b></div>
+        </div>
+        <div class="stats-group">
+          <button class="btn-sm" onclick="undoEdit()" title="Undo (Ctrl+Z)">Undo</button>
+          <button class="btn-sm" onclick="redoEdit()" title="Redo (Ctrl+Y)">Redo</button>
+          <button class="btn-sm" onclick="jumpNextIssue('N',1)" title="Next Ambiguous N (F8)">Next N</button>
+          <button class="btn-sm" onclick="jumpNextIssue('lowQ',1)" title="Next Low-Q (F7)">Next LowQ</button>
+          <button class="btn-sm" onclick="jumpNextIssue('mismatch',1)" title="Next Mismatch (])">Next Issue</button>
+        </div>
+      </div>
+
+      <!-- Find Bar -->
+      <div class="find-bar" id="findBar">
+        <label style="font-weight:600;">Find (F &amp; RC):</label>
+        <input type="text" id="findInput" placeholder="e.g. GAATTC or primer motif" style="width:220px;" oninput="runFind()" />
+        <span id="findCount" class="mono-muted">0 matches</span>
+        <button class="btn-sm" onclick="stepFind(-1)">Prev (Shift+F3)</button>
+        <button class="btn-sm" onclick="stepFind(1)">Next (F3)</button>
+        <button class="btn-sm" onclick="closeFindBar()">Close (Esc)</button>
+      </div>
+
+      <!-- Persistent Selection Action Bar (Always Visible) -->
+      <div class="selection-bar" id="selectionBar">
+        <strong id="selCountText" style="min-width:155px;">Cursor: bp 1 (no range)</strong>
+        <button class="btn-sm btn-danger" onclick="deleteSelectedBases()" title="Delete cursor or selected bases (Del)">Delete (Del)</button>
+        <button class="btn-sm" onclick="copySelectedBases(false)" title="Copy selected or full sequence (Ctrl+C)">Copy (Ctrl+C)</button>
+        <button class="btn-sm" onclick="copySelectedBases(true)">Copy FASTA</button>
+        <button class="btn-sm" onclick="trimToSelection('left')">Trim Left</button>
+        <button class="btn-sm" onclick="trimToSelection('right')">Trim Right</button>
+        <button class="btn-sm" onclick="restoreSelectedBases()">Restore</button>
+        <button class="btn-sm" id="btnClearSel" onclick="clearSelection()" disabled>Clear (Esc)</button>
+      </div>
+
+      <!-- Overview Minimap -->
+      <div class="minimap-wrap" id="minimapWrap" title="Click or drag to pan chromatogram">
+        <canvas id="minimapCanvas"></canvas>
+      </div>
+
+      <!-- Main Chromatogram Canvas + Hover Tooltip -->
+      <div class="canvas-viewport" id="canvasViewport" tabindex="0">
+        <canvas id="traceCanvas"></canvas>
+        <div class="trace-tooltip" id="traceTooltip"></div>
+      </div>
+
+      <!-- Bottom Analysis Drawer (Free Consensus + Pro Tabs) -->
+      <div class="pro-drawer" id="proDrawer">
+        <div class="pro-tabs">
+          <div class="pro-tab-list">
+            <button class="pro-tab active" data-tab="consensus" onclick="switchProTab('consensus')">Consensus &amp; Sequence</button>
+            <button class="pro-tab" data-tab="snp" onclick="switchProTab('snp')">Reference &amp; SNPs <span class="pro-badge">PRO</span></button>
+            <button class="pro-tab" data-tab="orf" onclick="switchProTab('orf')">6-Frame &amp; ORFs <span class="pro-badge">PRO</span></button>
+            <button class="pro-tab" data-tab="re" onclick="switchProTab('re')">Restriction Map <span class="pro-badge">PRO</span></button>
+            <button class="pro-tab" data-tab="het" onclick="switchProTab('het')">Het &amp; CRISPR Split <span class="pro-badge">PRO</span></button>
+            <button class="pro-tab" data-tab="wt" onclick="switchProTab('wt')">WT vs Mutant .ab1 <span class="pro-badge">PRO</span></button>
+          </div>
+          <button class="btn-sm" onclick="toggleProDrawer()" id="proDrawerToggle">Collapse</button>
+        </div>
+        <div class="pro-body" id="proBody"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Context Menu -->
+<div class="context-menu" id="contextMenu"></div>
+
+<!-- Modal: Primer, Trimming & Consensus Settings -->
+<div class="modal-backdrop" id="primerModal">
+  <div class="modal" style="max-width:760px;">
+    <div class="modal-header">
+      <span>Primer Registry, Trimming &amp; Consensus Settings</span>
+      <button class="btn-sm" onclick="closeModal('primerModal')">Close</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-field">
+          <label>Partial-Similarity Pairing Threshold: <b id="simThreshVal">0.45</b></label>
+          <input type="range" id="simThreshSlider" min="0.20" max="0.95" step="0.05" value="0.45" oninput="document.getElementById('simThreshVal').textContent=this.value; state.settings.simThreshold=parseFloat(this.value); saveSettings();" />
+        </div>
+        <div class="form-field">
+          <label>Auto-Trim Quality Threshold (Phred Q, 8/10 window)</label>
+          <input type="number" id="trimQInput" min="5" max="40" value="20" onchange="state.settings.trimQ=parseInt(this.value)||20; saveSettings();" />
+        </div>
+        <div class="form-field">
+          <label>Bayesian Consensus Min Confidence (Phred Q, else N)</label>
+          <input type="number" id="consMinConfInput" min="5" max="50" value="20" onchange="state.settings.consMinConf=parseInt(this.value)||20; saveSettings();" />
+        </div>
+        <div class="form-field">
+          <label>Min Trace Peak Floor (% of 95th-pct height)</label>
+          <input type="number" id="minPeakFracInput" min="5" max="40" value="14" onchange="state.settings.minPeakFrac=(parseInt(this.value)||14)/100; saveSettings();" />
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div>
+          <label class="label-success">Custom Forward Primer Tags</label>
+          <div class="inline-add">
+            <input type="text" id="newFwdPrimer" placeholder="e.g. B5 or customF" />
+            <button class="btn-sm btn-primary" onclick="addCustomPrimer('F')">Add</button>
+          </div>
+          <div class="tag-list" id="customFwdList"></div>
+        </div>
+        <div>
+          <label class="label-accent">Custom Reverse Primer Tags</label>
+          <div class="inline-add">
+            <input type="text" id="newRevPrimer" placeholder="e.g. B3 or customR" />
+            <button class="btn-sm btn-primary" onclick="addCustomPrimer('R')">Add</button>
+          </div>
+          <div class="tag-list" id="customRevList"></div>
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label>Primer / Vector Sequences to Clip (5' &amp; 3' — one sequence per line, IUPAC supported)</label>
+        <textarea id="clipPrimerSeqsInput" rows="3" placeholder="AGAGTTTGATCMTGGCTCAG&#10;TACGGYTACCTTGTTACGACTT&#10;TCCGTAGGTGAACCTGCGG&#10;TCCTCCGCTTATTGATATGC" onchange="saveClipPrimerSeqs()"></textarea>
+      </div>
+
+      <div>
+        <label class="label-muted">Built-In Microbial, Fungal &amp; Universal Primer Library (Active)</label>
+        <div class="mono-box" id="builtinPrimerSummary" style="max-height:110px;overflow:auto;margin-top:4px;"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button onclick="autoGroupSamples(); closeModal('primerModal');" class="btn-primary">Run Auto-Group Now (Ctrl+M)</button>
+      <button onclick="closeModal('primerModal')">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Structured Notes, BLAST & GenBank Submission Metadata -->
+<div class="modal-backdrop" id="notesModal">
+  <div class="modal" style="max-width:680px;">
+    <div class="modal-header">
+      <span>Sample Notes, BLAST ID &amp; GenBank Modifiers</span>
+      <button class="btn-sm" onclick="closeModal('notesModal')">Close</button>
+    </div>
+
+    <div class="modal-subtabs">
+      <button class="modal-subtab active" data-ntab="blast" onclick="switchNotesTab('blast')">BLAST &amp; Lab Notes</button>
+      <button class="modal-subtab" data-ntab="genbank" onclick="switchNotesTab('genbank')">GenBank / BankIt Modifiers</button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Tab 1: BLAST & Manual Lab Notes -->
+      <div id="notesTabBlast" class="notes-tab-pane">
+        <div class="form-grid">
+          <div class="form-field"><label>Genus &amp; Species (Organism)</label><input type="text" id="noteTaxon" placeholder="e.g. Bacillus subtilis" /></div>
+          <div class="form-field"><label>Closest Strain / Accession No.</label><input type="text" id="noteAccession" placeholder="e.g. NR_112116.2" /></div>
+          <div class="form-field"><label>BLAST Similarity / % Identity</label><input type="text" id="noteIdentity" placeholder="e.g. 99.65%" /></div>
+          <div class="form-field"><label>Query Coverage (%)</label><input type="text" id="noteCoverage" placeholder="e.g. 98%" /></div>
+          <div class="form-field"><label>E-value / Bit Score</label><input type="text" id="noteEvalue" placeholder="e.g. 0.0 / 1540" /></div>
+          <div class="form-field"><label>Marker / Gene</label><input type="text" id="noteMarker" placeholder="e.g. 16S ribosomal RNA, ITS, TEF1-a" /></div>
+          <div class="form-field full"><label>Free-Text Lab Notes (morphology, PCR remarks)</label><textarea id="noteText" rows="3" placeholder="Colony morphology, PCR conditions, lab remarks..."></textarea></div>
+        </div>
+      </div>
+
+      <!-- Tab 2: GenBank / BankIt Source Modifiers -->
+      <div id="notesTabGenbank" class="notes-tab-pane" style="display:none;">
+        <div class="form-grid">
+          <div class="form-field"><label>Strain (Bacteria / Fungi)</label><input type="text" id="noteStrain" placeholder="e.g. BS-01" /></div>
+          <div class="form-field"><label>Isolate (General / Eukaryotes)</label><input type="text" id="noteIsolate" placeholder="e.g. ISO-2026-01" /></div>
+          <div class="form-field"><label>Isolation Source</label><input type="text" id="noteIsolationSource" placeholder="e.g. rhizosphere soil, leaf tissue" /></div>
+          <div class="form-field"><label>Host (optional)</label><input type="text" id="noteHost" placeholder="e.g. Triticum aestivum" /></div>
+          <div class="form-field"><label>Geo Location (Country: Region)</label><input type="text" id="noteGeoLoc" placeholder="e.g. India: Chandigarh" /></div>
+          <div class="form-field"><label>Collection Date (YYYY-MM-DD or MMM-YYYY)</label><input type="text" id="noteCollectionDate" placeholder="e.g. 2026-11-27" /></div>
+          <div class="form-field"><label>Collected By</label><input type="text" id="noteCollectedBy" placeholder="e.g. A. Sharma" /></div>
+          <div class="form-field"><label>Specimen Voucher / Culture Collection</label><input type="text" id="noteVoucher" placeholder="e.g. MTCC 1234" /></div>
+        </div>
+        <div class="gb-apply-bar">
+          <span class="hint-text">Save time: copy Source, Host, Location, Date &amp; Collector to all "Use"-checked samples.</span>
+          <button class="btn-sm" onclick="applyGenBankCommonToAll()">Apply Common Fields to All Checked</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button onclick="closeModal('notesModal')">Cancel</button>
+      <button class="btn-primary" onclick="saveNotesModal()">Save Metadata</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Detailed NCBI BLASTn Launcher (POST + URL Fallback) -->
+<div class="modal-backdrop" id="blastModal">
+  <div class="modal" style="max-width:540px;">
+    <div class="modal-header">
+      <span>Launch NCBI BLASTn</span>
+      <button class="btn-sm" onclick="closeModal('blastModal')">Close</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-field">
+        <label>Target NCBI Database</label>
+        <select id="blastDbSelect">
+          <option value="core_nt">Core_nt / nt (Standard nucleotide)</option>
+          <option value="rRNA_typestrains/16S_ribosomal_RNA">16S rRNA (Bacteria &amp; Archaea Type Strains)</option>
+          <option value="rRNA_typestrains/ITS_RefSeq_Fungi">ITS (Fungi RefSeq Targeted Loci)</option>
+          <option value="rRNA_typestrains/28S_Fungus_RefSeq">28S / LSU (Fungi LSU RefSeq)</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Trimmed Consensus Preview (deleted bases excluded)</label>
+        <div class="mono-box" id="blastSeqPreview" style="max-height:130px;overflow:auto;"></div>
+      </div>
+      <p class="hint-text">Submits via HTTP POST in a new tab (no URL length limit) and copies your sequence to clipboard. Use URL Fallback if your browser blocks form posts.</p>
+    </div>
+    <div class="modal-footer">
+      <button onclick="closeModal('blastModal')">Cancel</button>
+      <button onclick="executeBlastLaunch(true)">URL Fallback</button>
+      <button class="btn-primary" onclick="executeBlastLaunch(false)">Open NCBI BLASTn (New Tab)</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Go To Position -->
+<div class="modal-backdrop" id="gotoModal">
+  <div class="modal" style="max-width:340px;">
+    <div class="modal-header"><span>Go to Nucleotide Position</span><button class="btn-sm" onclick="closeModal('gotoModal')">Close</button></div>
+    <div class="modal-body">
+      <input type="number" id="gotoInput" min="1" placeholder="Enter 1-based base position" onkeydown="if(event.key==='Enter') executeGoto();" />
+    </div>
+    <div class="modal-footer">
+      <button onclick="closeModal('gotoModal')">Cancel</button>
+      <button class="btn-primary" onclick="executeGoto()">Jump</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Upgrade to Pro (₹99 UPI + Serial Key) -->
+<div class="modal-backdrop" id="proModal">
+  <div class="modal" style="max-width:540px;">
+    <div class="modal-header">
+      <span>SangBase Pro — ₹99 One-Time Lifetime Unlock</span>
+      <button class="btn-sm" onclick="closeModal('proModal')">Close</button>
+    </div>
+    <div class="modal-body">
+      <div id="proStatusBanner" class="pro-banner"></div>
+      <ul class="pro-feature-list">
+        <li><strong>Per-Sample Reference SNP &amp; Indel Detector</strong> + <strong>WT vs Mutant .ab1 Overlay</strong></li>
+        <li><strong>Standard 6-Frame Translation &amp; CDS/ORF Validator</strong> (Genetic Codes 1, 11, 2, 5)</li>
+        <li><strong>Restriction Enzyme Mapper</strong> + <strong>Heterozygote &amp; CRISPR Indel Split Detector</strong></li>
+        <li><strong>Batch BLASTn &amp; Auto-Import NCBI XML/CSV → Notes</strong></li>
+        <li><strong>Pairwise Identity Matrix &amp; UPGMA SVG Phylogenetic Tree</strong></li>
+        <li><strong>Batch Multi-FASTA, GenBank BankIt, Full CSV &amp; 300-DPI PNG Export</strong></li>
+      </ul>
+      <div class="form-field">
+        <label>Enter Serial Key (Format: SBPRO-XXXX-XXXX-XXXX)</label>
+        <div class="inline-add">
+          <input type="text" id="proKeyInput" placeholder="SBPRO-XXXX-XXXX-XXXX" class="mono-upper" />
+          <button class="btn-primary" onclick="activateProKey()">Activate</button>
+        </div>
+      </div>
+      <div id="proDeactivateWrap" style="display:none;">
+        <button class="btn-sm btn-danger" onclick="deactivateProKey()">Deactivate License on This Browser</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Publication PNG Export (Pro) -->
+<div class="modal-backdrop" id="pngModal">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header"><span>Publication-Ready PNG Export (Pro)</span><button class="btn-sm" onclick="closeModal('pngModal')">Close</button></div>
+    <div class="modal-body">
+      <div class="form-field"><label>Custom Figure Title</label><input type="text" id="pngTitleInput" /></div>
+      <div class="form-grid">
+        <div class="form-field">
+          <label>Resolution (DPI Scale)</label>
+          <select id="pngScaleSelect">
+            <option value="2">2x (High-Res)</option>
+            <option value="3" selected>3x (Publication 300+ DPI)</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Background Style</label>
+          <select id="pngBgSelect">
+            <option value="white" selected>Clean White (Print)</option>
+            <option value="theme">Match Current Theme</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-field"><label>Start Base (1-based)</label><input type="number" id="pngStartInput" min="1" value="1" /></div>
+        <div class="form-field"><label>End Base</label><input type="number" id="pngEndInput" min="1" value="120" /></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button onclick="closeModal('pngModal')">Cancel</button>
+      <button class="btn-primary" onclick="exportHighResPNG()">Download PNG</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Batch Processing, GenBank & BLAST XML Import -->
+<div class="modal-backdrop" id="batchModal">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header"><span>Batch Processing, GenBank &amp; BLAST Tools</span><button class="btn-sm" onclick="closeModal('batchModal')">Close</button></div>
+    <div class="modal-body">
+      <p id="batchSummaryText" class="hint-text"></p>
+      <div class="stack-buttons">
+        <button onclick="batchAutoTrimAndConsensus()">1. Batch Quality Auto-Trim &amp; Rebuild All Consensuses</button>
+        <button class="btn-primary" onclick="exportBatchFasta(true)">2. Export Multi-FASTA (All "Use"-Checked) <span class="pro-badge">PRO</span></button>
+        <button onclick="exportBatchFasta(false)">3. Export Multi-FASTA (Selected Only) <span class="pro-badge">PRO</span></button>
+        <button onclick="exportGenBankBankIt()">4. Export GenBank / BankIt FASTA + Source Modifier TSV</button>
+        <button class="btn-primary" onclick="launchBatchBlastAllChecked()">5. Batch BLASTn All Checked (New Tab) <span class="pro-badge">PRO</span></button>
+        <button class="btn-pro" onclick="triggerBlastXmlImport()">6. Import NCBI BLAST XML / CSV → Auto-Fill Notes <span class="pro-badge">PRO</span></button>
+        <button onclick="exportBatchCSV()">7. Export Full Quality + BLAST Summary CSV <span class="pro-badge">PRO</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Duplicate / Dereplication Detector -->
+<div class="modal-backdrop" id="derepModal">
+  <div class="modal" style="max-width:640px;">
+    <div class="modal-header"><span>Duplicate / Dereplication Detector</span><button class="btn-sm" onclick="closeModal('derepModal')">Close</button></div>
+    <div class="modal-body">
+      <div class="inline-add" style="align-items:center;">
+        <label style="font-size:12px;white-space:nowrap;">Identity Threshold: <b id="derepThreshVal">99%</b></label>
+        <input type="range" id="derepSlider" min="95" max="100" step="1" value="99" oninput="document.getElementById('derepThreshVal').textContent=this.value+'%'; runDereplication();" />
+        <button class="btn-sm btn-primary" onclick="uncheckDuplicates()">Keep 1 Representative Checked</button>
+      </div>
+      <div id="derepResults" class="mono-box" style="max-height:340px;overflow:auto;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Pairwise Identity Matrix & SVG Phylogenetic Tree (Pro) -->
+<div class="modal-backdrop" id="phyloModal">
+  <div class="modal" style="max-width:900px;">
+    <div class="modal-header">
+      <span>Pairwise Identity Matrix &amp; UPGMA Phylogenetic Tree (Pro)</span>
+      <button class="btn-sm" onclick="closeModal('phyloModal')">Close</button>
+    </div>
+    <div class="modal-body">
+      <div class="btn-row">
+        <button class="btn-sm btn-primary" onclick="computePhyloMatrixAndTree()">Recompute for "Use"-Checked</button>
+        <button class="btn-sm" onclick="downloadPhyloSVG()">Download Tree SVG</button>
+        <button class="btn-sm" onclick="downloadPhyloNewick()">Download Newick (.nwk)</button>
+        <button class="btn-sm" onclick="downloadMatrixCSV()">Download Matrix CSV</button>
+      </div>
+      <div id="phyloTreeWrap" class="phylo-box"></div>
+      <div id="phyloMatrixWrap" class="matrix-wrap"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Wrapped Multi-Row Printable / PDF Chromatogram Report -->
+<div class="modal-backdrop" id="printModal">
+  <div class="modal" style="max-width:860px;">
+    <div class="modal-header">
+      <span>Wrapped Multi-Row Printable / PDF Report</span>
+      <div class="btn-row-tight">
+        <button class="btn-sm btn-primary" onclick="window.print()">Print / Save as PDF</button>
+        <button class="btn-sm" onclick="closeModal('printModal')">Close</button>
+      </div>
+    </div>
+    <div class="modal-body" id="printReportBody" style="background:#fff;color:#0f172a;"></div>
+  </div>
+</div>
+
+<!-- Modal: Keyboard Shortcuts Cheat-Sheet -->
+<div class="modal-backdrop" id="shortcutsModal">
+  <div class="modal" style="max-width:780px;">
+    <div class="modal-header"><span>Keyboard Shortcuts Cheat-Sheet</span><button class="btn-sm" onclick="closeModal('shortcutsModal')">Close (Esc)</button></div>
+    <div class="modal-body">
+      <div class="shortcut-grid">
+        <div class="shortcut-sec">
+          <h4>Project &amp; File Management</h4>
+          <div class="shortcut-row"><span>New Project</span><span class="kbd">Ctrl+N</span></div>
+          <div class="shortcut-row"><span>Open .sangbase.json</span><span class="kbd">Ctrl+O</span></div>
+          <div class="shortcut-row"><span>Save Project</span><span class="kbd">Ctrl+S</span></div>
+          <div class="shortcut-row"><span>Save Project As</span><span class="kbd">Ctrl+Shift+S</span></div>
+          <div class="shortcut-row"><span>Import .ab1 Files</span><span class="kbd">Ctrl+I</span></div>
+          <div class="shortcut-row"><span>Export Checked (Pro)</span><span class="kbd">Ctrl+Shift+E</span></div>
+          <div class="shortcut-row"><span>Export Selected (Pro)</span><span class="kbd">Ctrl+Shift+X</span></div>
+          <div class="shortcut-row"><span>Settings &amp; Primers</span><span class="kbd">Ctrl+,</span></div>
+        </div>
+        <div class="shortcut-sec">
+          <h4>Project Table Actions</h4>
+          <div class="shortcut-row"><span>Group 2 Selected</span><span class="kbd">Ctrl+G</span></div>
+          <div class="shortcut-row"><span>Ungroup Selected</span><span class="kbd">Ctrl+Shift+G</span></div>
+          <div class="shortcut-row"><span>Auto-Match F/R Pairs</span><span class="kbd">Ctrl+M</span></div>
+          <div class="shortcut-row"><span>Swap F/R Direction</span><span class="kbd">Ctrl+R</span></div>
+          <div class="shortcut-row"><span>Edit Notes &amp; GenBank</span><span class="kbd">Ctrl+E</span></div>
+          <div class="shortcut-row"><span>Rename Group</span><span class="kbd">F2</span></div>
+          <div class="shortcut-row"><span>Consensus Selected / All</span><span class="kbd">F5 / Shift+F5</span></div>
+          <div class="shortcut-row"><span>Delete / Clear Cons</span><span class="kbd">Del / Ctrl+Del</span></div>
+          <div class="shortcut-row"><span>Expand / Collapse All</span><span class="kbd">Ctrl+] / Ctrl+[</span></div>
+          <div class="shortcut-row"><span>Sort Name/Notes/Cons/Use</span><span class="kbd">Ctrl+1..4</span></div>
+        </div>
+        <div class="shortcut-sec">
+          <h4>Trace Viewer Navigation</h4>
+          <div class="shortcut-row"><span>Move / Extend Selection</span><span class="kbd">← → / Shift+← →</span></div>
+          <div class="shortcut-row"><span>Start / End of Sequence</span><span class="kbd">Home / End</span></div>
+          <div class="shortcut-row"><span>Switch Active Row</span><span class="kbd">Ctrl+↑ / Ctrl+↓</span></div>
+          <div class="shortcut-row"><span>Go to Position</span><span class="kbd">Ctrl+G</span></div>
+          <div class="shortcut-row"><span>Auto-Trim / Copy Trimmed</span><span class="kbd">Ctrl+T / Ctrl+Shift+T</span></div>
+          <div class="shortcut-row"><span>Next / Prev Ambiguous N</span><span class="kbd">F8 / Shift+F8</span></div>
+          <div class="shortcut-row"><span>Next / Prev Low-Q</span><span class="kbd">F7 / Shift+F7</span></div>
+          <div class="shortcut-row"><span>Next / Prev Mismatch</span><span class="kbd">[ / ] or Ctrl+←/→</span></div>
+        </div>
+        <div class="shortcut-sec">
+          <h4>Trace Editing, Find &amp; View</h4>
+          <div class="shortcut-row"><span>Replace Base (IUPAC)</span><span class="kbd">A C G T N W S M K R Y...</span></div>
+          <div class="shortcut-row"><span>Accept Fwd / Rev Base</span><span class="kbd">F / R</span></div>
+          <div class="shortcut-row"><span>Blank / Delete / Backspace</span><span class="kbd">Space / Del / Bksp</span></div>
+          <div class="shortcut-row"><span>Undo / Redo</span><span class="kbd">Ctrl+Z / Ctrl+Y</span></div>
+          <div class="shortcut-row"><span>Copy / Copy FASTA</span><span class="kbd">Ctrl+C / Ctrl+Shift+C</span></div>
+          <div class="shortcut-row"><span>Cut / Paste Consensus</span><span class="kbd">Ctrl+X / Ctrl+V</span></div>
+          <div class="shortcut-row"><span>Find / Next / Prev</span><span class="kbd">Ctrl+F / F3 / Shift+F3</span></div>
+          <div class="shortcut-row"><span>Zoom / Amp / Modes</span><span class="kbd">Ctrl+±0 / ↑↓ / 1–5</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+</body>
+</html>
