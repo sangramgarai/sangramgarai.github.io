@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sangram Garai — Mycology &amp; Open-Source Portfolio</title>
+  <meta name="description"
+    content="Personal academic and open-source software portfolio of Sangram Garai, Ph.D. Scholar in Mycology at CSIR-IMTECH, Chandigarh (AcSIR)." />
+
+  <!-- Google Fonts: Inter (UI & Body) + Merriweather (Academic Serif Headings) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:ital,wght@0,400;0,700;1,400&display=swap"
+    rel="stylesheet" />
+
+  <!-- Tailwind CSS via CDN for zero-build GitHub Pages deployment -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Configure custom design tokens and class-based dark mode
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            canvas: '#f8faf9',
+            forest: {
+              DEFAULT: '#1b4332',
+              light: '#2d6a4f',
+              muted: '#edf6f0',
+            },
+            charcoal: '#1e293b',
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+            serif: ['Merriweather', 'Georgia', 'Cambria', 'Times New Roman', 'serif'],
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- Prevent theme flash on page load by applying saved theme immediately -->
+  <script>
+    (function () {
+      try {
+        const savedTheme = localStorage.getItem('sg-theme');
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (e) {
+        // Fallback safely if localStorage is restricted
+      }
+    })();
+  </script>
+</head>
+
+<body
+  class="bg-canvas text-charcoal dark:bg-slate-950 dark:text-slate-100 font-sans antialiased selection:bg-forest-muted selection:text-forest dark:selection:bg-emerald-900 dark:selection:text-emerald-100 transition-colors duration-200">
+
+  <!-- =====================================================================
+       STICKY MINIMALIST NAVIGATION BAR
+       ===================================================================== -->
+  <header
+    class="sticky top-0 z-50 bg-canvas/90 dark:bg-slate-950/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors duration-200">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <!-- Brand / Home Link -->
+        <a href="#about" class="flex items-center gap-2.5 group focus:outline-none">
+          <!-- Minimalist Botanical / Fungal Spore Mark -->
+          <span
+            class="flex items-center justify-center w-8 h-8 rounded-lg bg-forest text-white dark:bg-emerald-800 group-hover:bg-forest-light transition-colors">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 3a7 7 0 0 0-7 7c0 2.5 1.5 4 3 4h8c1.5 0 3-1.5 3-4a7 7 0 0 0-7-7Z" />
+              <path d="M10 14v5a2 2 0 0 0 4 0v-5" />
+            </svg>
+          </span>
+          <span class="font-serif font-bold text-base sm:text-lg tracking-tight text-charcoal dark:text-slate-100">
+            Sangram Garai
+          </span>
+        </a>
+
+        <!-- Desktop Navigation Links -->
+        <nav class="hidden md:flex items-center gap-7 text-sm font-medium text-slate-600 dark:text-slate-300"
+          aria-label="Main Navigation">
+          <a href="#about" class="hover:text-forest dark:hover:text-emerald-400 transition-colors">About</a>
+          <a href="#projects" class="hover:text-forest dark:hover:text-emerald-400 transition-colors">Apps &amp;
+            Tools</a>
+          <a href="#research" class="hover:text-forest dark:hover:text-emerald-400 transition-colors">Research</a>
+          <a href="#publications"
+            class="hover:text-forest dark:hover:text-emerald-400 transition-colors">Publications</a>
+          <a href="#contact" class="hover:text-forest dark:hover:text-emerald-400 transition-colors">Contact</a>
+        </nav>
+
+        <!-- Right Controls: Theme Toggle + Mobile Menu Button -->
+        <div class="flex items-center gap-2">
+          <!-- Light / Dark Theme Toggle -->
+          <button id="theme-toggle" type="button" aria-label="Toggle Light or Dark Mode"
+            class="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:border-forest-light dark:hover:border-emerald-600 hover:text-forest dark:hover:text-emerald-400 transition-colors">
+            <!-- Sun Icon (shown in dark mode) -->
+            <svg id="icon-sun" class="hidden dark:block w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="4" />
+              <path
+                d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+            </svg>
+            <!-- Moon Icon (shown in light mode) -->
+            <svg id="icon-moon" class="block dark:hidden w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+            </svg>
+          </button>
+
+          <!-- Mobile Hamburger Button -->
+          <button id="mobile-menu-btn" type="button" aria-label="Toggle Menu" aria-expanded="false"
+            class="md:hidden p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:text-forest dark:hover:text-emerald-400 transition-colors">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="4" x2="20" y1="6" y2="6" />
+              <line x1="4" x2="20" y1="12" y2="12" />
+              <line x1="4" x2="20" y1="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Mobile Dropdown Menu -->
+      <nav id="mobile-menu" class="hidden md:hidden pb-4 pt-2 border-t border-slate-200 dark:border-slate-800"
+        aria-label="Mobile Navigation">
+        <div class="flex flex-col space-y-1 text-sm font-medium text-slate-700 dark:text-slate-300">
+          <a href="#about"
+            class="mobile-nav-link px-3 py-2.5 rounded-lg hover:bg-forest-muted dark:hover:bg-slate-800 hover:text-forest dark:hover:text-emerald-400">About</a>
+          <a href="#projects"
+            class="mobile-nav-link px-3 py-2.5 rounded-lg hover:bg-forest-muted dark:hover:bg-slate-800 hover:text-forest dark:hover:text-emerald-400">Apps
+            &amp; Tools</a>
+          <a href="#research"
+            class="mobile-nav-link px-3 py-2.5 rounded-lg hover:bg-forest-muted dark:hover:bg-slate-800 hover:text-forest dark:hover:text-emerald-400">Research</a>
+          <a href="#publications"
+            class="mobile-nav-link px-3 py-2.5 rounded-lg hover:bg-forest-muted dark:hover:bg-slate-800 hover:text-forest dark:hover:text-emerald-400">Publications</a>
+          <a href="#contact"
+            class="mobile-nav-link px-3 py-2.5 rounded-lg hover:bg-forest-muted dark:hover:bg-slate-800 hover:text-forest dark:hover:text-emerald-400">Contact</a>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+
+    <!-- =====================================================================
+         1. HERO / ABOUT SECTION
+         ===================================================================== -->
+    <section id="about" class="pt-14 pb-16 sm:pt-20 sm:pb-20 border-b border-slate-200 dark:border-slate-800">
+      <div class="max-w-3xl">
+        <!-- Compact Status Badge -->
+        <div
+          class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-forest-muted dark:bg-emerald-950/70 border border-emerald-200/80 dark:border-emerald-900 text-forest dark:text-emerald-300 text-xs font-medium mb-6">
+          <span class="w-2 h-2 rounded-full bg-forest-light dark:bg-emerald-400"></span>
+          <span>CSIR-IMTECH &middot; Chandigarh, India</span>
+        </div>
+
+        <!-- Name & Subtitle -->
+        <h1
+          class="font-serif text-3xl sm:text-5xl font-bold tracking-tight text-charcoal dark:text-white leading-tight">
+          Sangram Garai
+        </h1>
+        <p class="mt-3 text-base sm:text-lg font-medium text-forest-light dark:text-emerald-400">
+          Ph.D. Scholar (Mycology) &middot; CSIR-IMTECH, Chandigarh (AcSIR)
+        </p>
+
+        <!-- Concise Bio -->
+        <p class="mt-5 text-base sm:text-lg leading-relaxed text-slate-600 dark:text-slate-300">
+          Researching fungal biology, entomopathogenic fungi, and microbial bioprocessing under
+          Dr. B. Devadatha (MTCC) at CSIR-Institute of Microbial Technology. Outside the wet lab,
+          I build lightweight, browser-based open-source web apps and bioinformatics utilities to
+          make lab and fieldwork faster.
+        </p>
+
+        <!-- Action / Profile Buttons -->
+        <div class="mt-8 flex flex-wrap items-center gap-3">
+          <!-- UPDATE: Replace YOUR-GITHUB-USERNAME with your actual GitHub username -->
+          <a href="https://github.com/sangramgarai" target="_blank" rel="noopener noreferrer"
+            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-forest hover:bg-forest-light dark:bg-emerald-700 dark:hover:bg-emerald-600 text-white text-sm font-medium shadow-sm transition-colors">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path fill-rule="evenodd" clip-rule="evenodd"
+                d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0 0 22 12.017C22 6.484 17.522 2 12 2Z" />
+            </svg>
+            <span>GitHub</span>
+          </a>
+
+          <a href="https://scholar.google.com/citations?user=WWnbcdkAAAAJ&hl=en" target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-forest-light dark:hover:border-emerald-500 text-charcoal dark:text-slate-100 text-sm font-medium transition-colors">
+            <svg class="w-4 h-4 text-forest dark:text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+              <path d="M6 12v5c3 3 9 3 12 0v-5" />
+            </svg>
+            <span>Google Scholar</span>
+          </a>
+
+          <a href="https://www.researchgate.net/profile/Sangram-Garai" target="_blank" rel="noopener noreferrer"
+            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-forest-light dark:hover:border-emerald-500 text-charcoal dark:text-slate-100 text-sm font-medium transition-colors">
+            <svg class="w-4 h-4 text-forest dark:text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
+            </svg>
+            <span>ResearchGate</span>
+          </a>
+
+          <a href="mailto:sangram[dot]imtech24a[at]acsir[dot]res[dot]in"
+            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-forest-light dark:hover:border-emerald-500 text-charcoal dark:text-slate-100 text-sm font-medium transition-colors">
+            <svg class="w-4 h-4 text-forest dark:text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect width="20" height="16" x="2" y="4" rx="2" />
+              <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+            </svg>
+            <span>Email</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         2. APPS & GITHUB PROJECTS SECTION (PRIMARY FEATURE)
+         ===================================================================== -->
+    <section id="projects" class="py-16 border-b border-slate-200 dark:border-slate-800">
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+        <div class="max-w-2xl">
+          <h2 class="font-serif text-2xl sm:text-3xl font-bold text-charcoal dark:text-white">
+            Apps &amp; Open-Source Tools
+          </h2>
+          <p class="mt-2.5 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
+            Open-source, browser-only web apps and utilities published on GitHub. No servers,
+            no paywalls—built to solve practical lab and field workflows.
+          </p>
+        </div>
+      </div>
+
+      <!-- Category Filter Pills (Vanilla JS) -->
+      <div id="filter-bar" class="flex flex-wrap items-center gap-2 mb-8" role="group"
+        aria-label="Filter projects by category">
+        <button type="button" data-filter="all"
+          class="filter-btn px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors bg-forest text-white dark:bg-emerald-700">
+          All
+        </button>
+        <button type="button" data-filter="Bioinformatics"
+          class="filter-btn px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-forest-light dark:hover:border-emerald-500">
+          Bioinformatics
+        </button>
+        <button type="button" data-filter="Field Tools"
+          class="filter-btn px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-forest-light dark:hover:border-emerald-500">
+          Field Tools
+        </button>
+        <button type="button" data-filter="Web Utilities"
+          class="filter-btn px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-forest-light dark:hover:border-emerald-500">
+          Web Utilities
+        </button>
+      </div>
+
+      <!-- Responsive Grid of Project Cards -->
+      <div id="projects-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+        <!-- Project Card 1 -->
+        <article
+          class="project-card flex flex-col justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-forest-light/50 dark:hover:border-emerald-700 transition-all"
+          data-category="Bioinformatics">
+          <div>
+            <!-- Category & Year Row -->
+            <div class="flex items-center justify-between gap-2 mb-4">
+              <span
+                class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-forest-muted dark:bg-emerald-950 text-forest dark:text-emerald-300">
+                Bioinformatics
+              </span>
+              <span class="text-xs font-medium text-slate-400 dark:text-slate-500">
+                Active &middot; 2025
+              </span>
+            </div>
+
+            <!-- Title & Description -->
+            <h3 class="font-serif text-lg font-bold text-charcoal dark:text-white leading-snug">
+              Sanger Sequencing &amp; Contig Assembler
+            </h3>
+            <p class="mt-2.5 text-sm text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-3">
+              Browser-based .ab1 chromatogram viewer, multi-strand contig assembly, SNP detection,
+              6-frame ORF validation, and GenBank submission formatting.
+            </p>
+          </div>
+
+          <div class="mt-6">
+            <!-- Tech Tags -->
+            <div class="flex flex-wrap gap-1.5 mb-5">
+              <span
+                class="px-2 py-0.5 rounded-md text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">Bioinformatics</span>
+              <span
+                class="px-2 py-0.5 rounded-md text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">.ab1</span>
+              <span
+                class="px-2 py-0.5 rounded-md text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">Vanilla
+                JS</span>
+            </div>
+
+            <!-- Action Links -->
+            <div
+              class="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-sm font-medium">
+              <!-- UPDATE: Replace # with your live GitHub Pages URL -->
+              <a href="#" target="_blank" rel="noopener noreferrer"
+                class="text-forest dark:text-emerald-400 hover:underline">
+                Live App &#8599;
+              </a>
+              <!-- UPDATE: Replace # with your GitHub repository URL -->
+              <a href="#" target="_blank" rel="noopener noreferrer"
+                class="text-slate-500 dark:text-slate-400 hover:text-charcoal dark:hover:text-white transition-colors">
+                GitHub Repo
+              </a>
+            </div>
+          </div>
+        </article>
+
+        <!-- Project Card 2 -->
+        <article
+          class="project-card flex flex-col justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-forest-light/50 dark:hover:border-emerald-700 transition-all"
+          data-category="Field Tools">
+          <div>
+            <!-- Category & Year Row -->
+            <div class="flex items-center justify-between gap-2 mb-4">
+              <span
+                class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-forest-muted dark:bg-emerald-950 text-forest dark:text-emerald-300">
+                Field Tools
+              </span>
+              <span class="text-xs font-medium text-slate-400 dark:text-slate-500">
+                Active &middot; 2025
+              </span>
+            </div>
+
+            <!-- Title & Description -->
+            <h3 class="font-serif text-lg font-bold text-charcoal dark:text-white leading-snug">
+              GPS Field Camera
+            </h3>
+            <p class="mt-2.5 text-sm text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-3">
+              Watermark-free, browser-only GPS camera web app for field sampling and fungal
+              collection documentation using free open-source location APIs.
+            </p>
+          </div>
+
+          <div class="mt-6">
+            <!-- Tech Tags -->
+            <div class="flex flex-wrap gap-1.5 mb-5">
+              <span
+                class="px-2 py-0.5 rounded-md text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">Geolocation</span>
+              <span
+                class="px-2 py-0.5 rounded-md text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">FOSS
+                API</span>
+              <span
+                class="px-2 py-0.5 rounded-md text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">PWA</span>
+            </div>
+
+            <!-- Action Links -->
+            <div
+              class="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-sm font-medium">
+              <!-- UPDATE: Replace # with your live GitHub Pages URL -->
+              <a href="#" target="_blank" rel="noopener noreferrer"
+                class="text-forest dark:text-emerald-400 hover:underline">
+                Live App &#8599;
+              </a>
+              <!-- UPDATE: Replace # with your GitHub repository URL -->
+              <a href="#" target="_blank" rel="noopener noreferrer"
+                class="text-slate-500 dark:text-slate-400 hover:text-charcoal dark:hover:text-white transition-colors">
+                GitHub Repo
+              </a>
+            </div>
+          </div>
+        </article>
+
+        <!-- Project Card 3 (Placeholder) -->
+        <article
+          class="project-card flex flex-col justify-between bg-white dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-6 hover:border-forest-light/60 dark:hover:border-emerald-700 transition-all"
+          data-category="Web Utilities">
+          <div>
+            <!-- Category & Year Row -->
+            <div class="flex items-center justify-between gap-2 mb-4">
+              <span
+                class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-forest-muted dark:bg-emerald-950 text-forest dark:text-emerald-300">
+                Web Utilities
+              </span>
+              <span class="text-xs font-medium text-slate-400 dark:text-slate-500">
+                Upcoming
+              </span>
+            </div>
+
+            <!-- Title & Description -->
+            <h3 class="font-serif text-lg font-bold text-charcoal dark:text-white leading-snug">
+              Next Project / Upcoming Tool
+            </h3>
+            <p class="mt-2.5 text-sm text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-3">
+              Data extractor tool from pdfs
+            </p>
+          </div>
+
+          <div class="mt-6">
+            <!-- Tech Tags -->
+            <div class="flex flex-wrap gap-1.5 mb-5">
+              <span
+                class="px-2 py-0.5 rounded-md text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">GitHub
+                Pages</span>
+              <span
+                class="px-2 py-0.5 rounded-md text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">Static</span>
+            </div>
+
+            <!-- Action Links -->
+            <div
+              class="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-sm font-medium">
+              <!-- UPDATE: Replace # with your live GitHub Pages URL -->
+              <a href="#" class="text-forest dark:text-emerald-400 hover:underline">
+                Live App &#8599;
+              </a>
+              <!-- UPDATE: Replace # with your GitHub repository URL -->
+              <a href="#"
+                class="text-slate-500 dark:text-slate-400 hover:text-charcoal dark:hover:text-white transition-colors">
+                GitHub Repo
+              </a>
+            </div>
+          </div>
+        </article>
+
+        <!-- =================================================================
+             COPY & PASTE THIS BLOCK TO ADD A NEW APP
+             Instructions:
+             1. Copy everything from <article ...> to </article> below.
+             2. Paste it right above this comment block inside #projects-grid.
+             3. Set data-category to one of:
+                "Bioinformatics", "Field Tools", or "Web Utilities"
+             4. Update the title, description, tags, and Live App / GitHub links.
+             =================================================================
+
+        <article
+          class="project-card flex flex-col justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-forest-light/50 dark:hover:border-emerald-700 transition-all"
+          data-category="Bioinformatics"
+        >
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-4">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-forest-muted dark:bg-emerald-950 text-forest dark:text-emerald-300">
+                Bioinformatics
+              </span>
+              <span class="text-xs font-medium text-slate-400 dark:text-slate-500">
+                Active &middot; 2026
+              </span>
+            </div>
+
+            <h3 class="font-serif text-lg font-bold text-charcoal dark:text-white leading-snug">
+              Your New App Title
+            </h3>
+            <p class="mt-2.5 text-sm text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-3">
+              Brief two-line description of what this browser-based tool does and how it helps in the lab or field.
+            </p>
+          </div>
+
+          <div class="mt-6">
+            <div class="flex flex-wrap gap-1.5 mb-5">
+              <span class="px-2 py-0.5 rounded-md text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">HTML/JS</span>
+              <span class="px-2 py-0.5 rounded-md text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">Client-side</span>
+              <span class="px-2 py-0.5 rounded-md text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">FOSS</span>
+            </div>
+
+            <div class="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-sm font-medium">
+              <a href="https://YOUR-USERNAME.github.io/YOUR-REPO/" target="_blank" rel="noopener noreferrer" class="text-forest dark:text-emerald-400 hover:underline">
+                Live App &#8599;
+              </a>
+              <a href="https://github.com/YOUR-USERNAME/YOUR-REPO" target="_blank" rel="noopener noreferrer" class="text-slate-500 dark:text-slate-400 hover:text-charcoal dark:hover:text-white transition-colors">
+                GitHub Repo
+              </a>
+            </div>
+          </div>
+        </article>
+
+             ================================================================= -->
+
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         3. RESEARCH INTERESTS & ACADEMIC BACKGROUND SECTION
+         ===================================================================== -->
+    <section id="research" class="py-16 border-b border-slate-200 dark:border-slate-800">
+      <h2 class="font-serif text-2xl sm:text-3xl font-bold text-charcoal dark:text-white mb-10">
+        Research &amp; Academic Background
+      </h2>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-10">
+        <!-- Left Column: Research Focus -->
+        <div class="lg:col-span-5">
+          <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-4">
+            Research Focus
+          </h3>
+          <ul class="flex flex-wrap gap-2.5">
+            <li
+              class="px-3.5 py-2 rounded-lg bg-forest-muted dark:bg-emerald-950/60 border border-emerald-200/70 dark:border-emerald-900 text-forest dark:text-emerald-200 text-sm font-medium">
+              Mycology &amp; Fungal Diversity
+            </li>
+            <li
+              class="px-3.5 py-2 rounded-lg bg-forest-muted dark:bg-emerald-950/60 border border-emerald-200/70 dark:border-emerald-900 text-forest dark:text-emerald-200 text-sm font-medium">
+              Entomopathogenic Fungi
+            </li>
+            <li
+              class="px-3.5 py-2 rounded-lg bg-forest-muted dark:bg-emerald-950/60 border border-emerald-200/70 dark:border-emerald-900 text-forest dark:text-emerald-200 text-sm font-medium">
+              Bioprocess &amp; Xylitol Valorization
+            </li>
+            <li
+              class="px-3.5 py-2 rounded-lg bg-forest-muted dark:bg-emerald-950/60 border border-emerald-200/70 dark:border-emerald-900 text-forest dark:text-emerald-200 text-sm font-medium">
+              Agricultural Microbiology
+            </li>
+            <li
+              class="px-3.5 py-2 rounded-lg bg-forest-muted dark:bg-emerald-950/60 border border-emerald-200/70 dark:border-emerald-900 text-forest dark:text-emerald-200 text-sm font-medium">
+              Open-Source Bioinformatics
+            </li>
+          </ul>
+        </div>
+
+        <!-- Right Column: Education & Affiliation Timeline -->
+        <div class="lg:col-span-7">
+          <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-5">
+            Education &amp; Affiliation
+          </h3>
+          <div class="relative border-l-2 border-slate-200 dark:border-slate-800 pl-6 space-y-8">
+            <!-- Ph.D. Entry -->
+            <div class="relative">
+              <span
+                class="absolute -left-[31px] top-1.5 w-3 h-3 rounded-full bg-forest dark:bg-emerald-500 ring-4 ring-canvas dark:ring-slate-950"></span>
+              <div class="flex flex-wrap items-baseline justify-between gap-2">
+                <h4 class="font-serif text-base sm:text-lg font-bold text-charcoal dark:text-white">
+                  Ph.D. Scholar (AcSIR)
+                </h4>
+                <span
+                  class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-forest-muted dark:bg-emerald-950 text-forest dark:text-emerald-300">
+                  2024 &ndash; Present
+                </span>
+              </div>
+              <p class="mt-1 text-sm font-medium text-slate-700 dark:text-slate-200">
+                CSIR-Institute of Microbial Technology (CSIR-IMTECH), Chandigarh
+              </p>
+              <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                Supervisor: Dr. B. Devadatha (MTCC)
+              </p>
+            </div>
+
+            <!-- M.Sc. Entry -->
+            <div class="relative">
+              <span
+                class="absolute -left-[31px] top-1.5 w-3 h-3 rounded-full bg-slate-300 dark:bg-slate-600 ring-4 ring-canvas dark:ring-slate-950"></span>
+              <div class="flex flex-wrap items-baseline justify-between gap-2">
+                <h4 class="font-serif text-base sm:text-lg font-bold text-charcoal dark:text-white">
+                  M.Sc. in Microbiology
+                </h4>
+                <span
+                  class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                  2023
+                </span>
+              </div>
+              <p class="mt-1 text-sm font-medium text-slate-700 dark:text-slate-200">
+                Division of Microbiology, ICAR-Indian Agricultural Research Institute (IARI), New Delhi
+              </p>
+              <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                Advisor: Dr. Anju Arora
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         4. SELECTED PUBLICATIONS SECTION
+         ===================================================================== -->
+    <section id="publications" class="py-16 border-b border-slate-200 dark:border-slate-800">
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-8">
+        <h2 class="font-serif text-2xl sm:text-3xl font-bold text-charcoal dark:text-white">
+          Selected Publications
+        </h2>
+      </div>
+
+      <div class="space-y-4">
+        <!-- Publication 2025 -->
+        <article
+          class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 sm:p-6 flex flex-col sm:flex-row gap-4 sm:items-start">
+          <span
+            class="inline-flex items-center justify-center self-start shrink-0 px-3 py-1 rounded-md text-xs font-bold bg-forest-muted dark:bg-emerald-950 text-forest dark:text-emerald-300">
+            2025
+          </span>
+          <div>
+            <h3 class="font-serif text-base font-bold text-charcoal dark:text-white leading-snug">
+              Insights into Hemicellulose Extraction and Bio-valorisation Into Xylitol for Overcoming Process Challenges
+            </h3>
+            <p class="mt-1.5 text-sm text-slate-600 dark:text-slate-300">
+              <strong class="font-semibold text-charcoal dark:text-slate-100">S. Garai</strong>, A. Arora.
+            </p>
+            <p class="mt-1 text-sm italic text-slate-500 dark:text-slate-400">
+              In: Lignocellulosic Biomass and Enzymes: Fundamentals, Emerging Technologies and Applications.
+            </p>
+          </div>
+        </article>
+
+        <!-- Publication 2024 -->
+        <article
+          class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 sm:p-6 flex flex-col sm:flex-row gap-4 sm:items-start">
+          <span
+            class="inline-flex items-center justify-center self-start shrink-0 px-3 py-1 rounded-md text-xs font-bold bg-forest-muted dark:bg-emerald-950 text-forest dark:text-emerald-300">
+            2024
+          </span>
+          <div>
+            <h3 class="font-serif text-base font-bold text-charcoal dark:text-white leading-snug">
+              Valorising hemicellulosic fraction of corncobs concomitantly into ethanol and xylitol using <em>Candida
+                tropicalis</em> Y6
+            </h3>
+            <p class="mt-1.5 text-sm text-slate-600 dark:text-slate-300">
+              <strong class="font-semibold text-charcoal dark:text-slate-100">S. Garai</strong>, A. Khandelwal, A.
+              Arora.
+            </p>
+            <p class="mt-1 text-sm italic text-slate-500 dark:text-slate-400">
+              Waste Management Bulletin, 2(4), 223&ndash;230.
+            </p>
+          </div>
+        </article>
+
+        <!-- Publication 2023 -->
+        <article
+          class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 sm:p-6 flex flex-col sm:flex-row gap-4 sm:items-start">
+          <span
+            class="inline-flex items-center justify-center self-start shrink-0 px-3 py-1 rounded-md text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+            2023
+          </span>
+          <div>
+            <h3 class="font-serif text-base font-bold text-charcoal dark:text-white leading-snug">
+              Standardizing process for xylitol production from corn cobs using <em>Candida tropicalis</em>
+            </h3>
+            <p class="mt-1.5 text-sm text-slate-600 dark:text-slate-300">
+              <strong class="font-semibold text-charcoal dark:text-slate-100">S. Garai</strong>.
+            </p>
+            <p class="mt-1 text-sm italic text-slate-500 dark:text-slate-400">
+              M.Sc. Thesis, Division of Microbiology, ICAR-IARI, New Delhi.
+            </p>
+          </div>
+        </article>
+      </div>
+
+      <!-- Full Google Scholar Link -->
+      <div class="mt-7">
+        <a href="https://scholar.google.com/citations?user=WWnbcdkAAAAJ&hl=en" target="_blank" rel="noopener noreferrer"
+          class="inline-flex items-center gap-1.5 text-sm font-medium text-forest dark:text-emerald-400 hover:underline">
+          <span>View full publication list on Google Scholar</span>
+          <span aria-hidden="true">&#8599;</span>
+        </a>
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         5. CONTACT & FOOTER SECTION
+         ===================================================================== -->
+    <section id="contact" class="py-16">
+      <div
+        class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <h2 class="font-serif text-2xl font-bold text-charcoal dark:text-white">
+            Get in Touch
+          </h2>
+          <p class="mt-2 text-sm sm:text-base text-slate-600 dark:text-slate-300 max-w-xl">
+            Open to discussions on mycology, entomopathogenic fungi, microbial bioprocessing,
+            and open-source lab/field software collaborations.
+          </p>
+
+          <!-- Institutional Address -->
+          <p class="mt-4 text-xs sm:text-sm text-slate-500 dark:text-slate-400 flex items-start gap-2">
+            <svg class="w-4 h-4 mt-0.5 shrink-0 text-forest dark:text-emerald-400" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg>
+            <span>CSIR-Institute of Microbial Technology, Sector 39-A, Chandigarh, India</span>
+          </p>
+        </div>
+
+        <!-- Direct Email + One-Click Copy Button -->
+        <div class="flex flex-col sm:items-end gap-3 shrink-0">
+          <a href="mailto:sangram.imtech24a@acsir.res.in"
+            class="text-sm sm:text-base font-medium text-forest dark:text-emerald-400 hover:underline break-all">
+            sangram.imtech24a@acsir.res.in
+          </a>
+          <button id="copy-email-btn" type="button" data-email="sangram.imtech24a@acsir.res.in"
+            class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-forest-muted dark:bg-emerald-950 hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-200 dark:border-emerald-800 text-forest dark:text-emerald-300 text-xs sm:text-sm font-medium transition-colors">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+              <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+            </svg>
+            <span id="copy-email-label">Copy Email</span>
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Minimalist Footer -->
+  <footer class="border-t border-slate-200 dark:border-slate-800 py-8">
+    <div
+      class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
+      <p>&copy; <span id="footer-year">2026</span> Sangram Garai. All rights reserved.</p>
+      <p>Static HTML &middot; Zero Backend &middot; Hosted on GitHub Pages</p>
+    </div>
+  </footer>
+
+  <!-- =====================================================================
+       MINIMAL VANILLA JAVASCRIPT (Theme, Filters, Mobile Menu, Copy Email)
+       ===================================================================== -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // 1. Dynamic Footer Year
+      const yearEl = document.getElementById('footer-year');
+      if (yearEl) {
+        yearEl.textContent = new Date().getFullYear();
+      }
+
+      // 2. Light / Dark Theme Toggle (persisted in localStorage)
+      const themeToggleBtn = document.getElementById('theme-toggle');
+      if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', () => {
+          const isDark = document.documentElement.classList.toggle('dark');
+          try {
+            localStorage.setItem('sg-theme', isDark ? 'dark' : 'light');
+          } catch (e) {
+            // Ignore storage errors in restricted browsing contexts
+          }
+        });
+      }
+
+      // 3. Mobile Menu Toggle
+      const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+      const mobileMenu = document.getElementById('mobile-menu');
+      const mobileLinks = document.querySelectorAll('.mobile-nav-link');
+
+      if (mobileMenuBtn && mobileMenu) {
+        mobileMenuBtn.addEventListener('click', () => {
+          const isHidden = mobileMenu.classList.toggle('hidden');
+          mobileMenuBtn.setAttribute('aria-expanded', String(!isHidden));
+        });
+
+        mobileLinks.forEach((link) => {
+          link.addEventListener('click', () => {
+            mobileMenu.classList.add('hidden');
+            mobileMenuBtn.setAttribute('aria-expanded', 'false');
+          });
+        });
+      }
+
+      // 4. Project Category Filter Pills
+      const filterButtons = document.querySelectorAll('.filter-btn');
+      const projectCards = document.querySelectorAll('.project-card');
+
+      const activeClasses = ['bg-forest', 'text-white', 'dark:bg-emerald-700', 'border-transparent'];
+      const inactiveClasses = [
+        'bg-white',
+        'dark:bg-slate-900',
+        'border',
+        'border-slate-200',
+        'dark:border-slate-700',
+        'text-slate-600',
+        'dark:text-slate-300',
+        'hover:border-forest-light',
+        'dark:hover:border-emerald-500',
+      ];
+
+      filterButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const selected = btn.getAttribute('data-filter');
+
+          // Update active button styles
+          filterButtons.forEach((b) => {
+            b.classList.remove(...activeClasses);
+            b.classList.add(...inactiveClasses);
+          });
+          btn.classList.remove(...inactiveClasses);
+          btn.classList.add(...activeClasses);
+
+          // Show/hide project cards
+          projectCards.forEach((card) => {
+            const category = card.getAttribute('data-category');
+            if (selected === 'all' || category === selected) {
+              card.classList.remove('hidden');
+            } else {
+              card.classList.add('hidden');
+            }
+          });
+        });
+      });
+
+      // 5. One-Click Copy Email (iframe-safe fallback using execCommand)
+      const copyBtn = document.getElementById('copy-email-btn');
+      const copyLabel = document.getElementById('copy-email-label');
+
+      if (copyBtn && copyLabel) {
+        copyBtn.addEventListener('click', () => {
+          const email = copyBtn.getAttribute('data-email');
+          try {
+            const tempInput = document.createElement('textarea');
+            tempInput.value = email;
+            tempInput.setAttribute('readonly', '');
+            tempInput.style.position = 'fixed';
+            tempInput.style.opacity = '0';
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+
+            copyLabel.textContent = 'Copied!';
+            setTimeout(() => {
+              copyLabel.textContent = 'Copy Email';
+            }, 2000);
+          } catch (err) {
+            copyLabel.textContent = 'Copy Failed';
+            setTimeout(() => {
+              copyLabel.textContent = 'Copy Email';
+            }, 2000);
+          }
+        });
+      }
+    });
+  </script>
+</body>
+
+</html>
