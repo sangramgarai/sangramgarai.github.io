@@ -1,0 +1,3447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Field Research GPS Camera</title>
+
+  <style>
+    /* =========================================================================
+       1. CORE RESET & iOS SAFARI / WEBVIEW VIEWPORT FOUNDATION
+    ========================================================================= */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :root {
+      --bg-base: #090d14;
+      --bg-panel: #101722;
+      --bg-card: #151f2e;
+      --bg-input: #0b111b;
+      --border: rgba(148, 163, 184, 0.2);
+      --border-strong: rgba(148, 163, 184, 0.35);
+      --text-main: #f8fafc;
+      --text-sub: #cbd5e1;
+      --text-muted: #94a3b8;
+      --emerald: #10b981;
+      --emerald-soft: rgba(16, 185, 129, 0.16);
+      --cyan: #06b6d4;
+      --cyan-soft: rgba(6, 182, 212, 0.16);
+      --amber: #f59e0b;
+      --rose: #ef4444;
+      --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg-base);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      -webkit-text-size-adjust: 100%;
+      touch-action: manipulation;
+    }
+
+    /* Prevent iOS Safari auto-zoom on focus for all form controls */
+    input, textarea, select {
+      font-size: 16px;
+      font-family: inherit;
+      color: var(--text-main);
+    }
+
+    button {
+      font-family: inherit;
+      color: inherit;
+      cursor: pointer;
+      border: none;
+      background: none;
+      padding: 0;
+      margin: 0;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    button:active {
+      transform: scale(0.96);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* Root container anchored with safe-area insets for Dynamic Island / Home Bar */
+    #app {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-base);
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      padding-left: env(safe-area-inset-left, 0px);
+      padding-right: env(safe-area-inset-right, 0px);
+      overflow: hidden;
+    }
+
+    /* =========================================================================
+       2. TOP TELEMETRY HUD BAR
+    ========================================================================= */
+    .top-bar {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      padding: 8px 10px;
+      background: rgba(9, 13, 20, 0.96);
+      border-bottom: 1px solid var(--border);
+      z-index: 20;
+    }
+
+    .top-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .pill-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      height: 32px;
+      padding: 0 9px;
+      border-radius: 999px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-main);
+      white-space: nowrap;
+      max-width: 130px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pill-btn.mono {
+      font-family: var(--font-mono);
+    }
+
+    .pill-btn.accent-emerald {
+      background: var(--emerald-soft);
+      border-color: rgba(16, 185, 129, 0.45);
+      color: #6ee7b7;
+    }
+
+    .pill-btn.accent-cyan {
+      background: var(--cyan-soft);
+      border-color: rgba(6, 182, 212, 0.45);
+      color: #67e8f9;
+    }
+
+    .icon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      color: var(--text-sub);
+      flex-shrink: 0;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: var(--amber);
+    }
+    .dot.ok { background: var(--emerald); }
+    .dot.wx { background: var(--cyan); }
+    .dot.err { background: var(--rose); }
+    .dot.idle { background: #64748b; }
+    .dot.pulse { animation: pulseDot 1.3s ease-in-out infinite; }
+
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+
+    .truncate {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* =========================================================================
+       3. QUICK SAMPLE BAR
+    ========================================================================= */
+    .sample-bar {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      padding: 6px 10px;
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border);
+      z-index: 15;
+    }
+
+    .sample-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .sample-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #34d399;
+      flex-shrink: 0;
+    }
+
+    .sample-input {
+      width: 100%;
+      max-width: 145px;
+      min-width: 80px;
+      height: 32px;
+      padding: 2px 8px;
+      border-radius: 8px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-strong);
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: #fff;
+      outline: none;
+    }
+
+    .sample-input:focus {
+      border-color: var(--emerald);
+    }
+
+    .mini-chip-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      height: 32px;
+      padding: 0 9px;
+      border-radius: 8px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-strong);
+      font-size: 12px;
+      font-weight: 700;
+      color: #67e8f9;
+      flex-shrink: 0;
+    }
+
+    .auto-inc-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: var(--text-sub);
+      flex-shrink: 0;
+      user-select: none;
+    }
+
+    .auto-inc-label input {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+      accent-color: var(--emerald);
+    }
+
+    .notes-quick-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      height: 32px;
+      padding: 0 8px;
+      border-radius: 8px;
+      background: rgba(245, 158, 11, 0.14);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      color: #fde68a;
+      font-size: 11px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    /* Quick Notes Inline Popover */
+    .quick-notes-bar {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      background: #131b29;
+      border-bottom: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .quick-notes-input {
+      flex: 1;
+      height: 34px;
+      padding: 4px 10px;
+      border-radius: 8px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-strong);
+      color: #fef3c7;
+      outline: none;
+    }
+
+    .quick-notes-input:focus {
+      border-color: var(--amber);
+    }
+
+    /* =========================================================================
+       4. MAIN VIEWFINDER STAGE & LIVE WYSIWYG STAMP OVERLAY
+    ========================================================================= */
+    .stage {
+      flex: 1 1 auto;
+      min-height: 0;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #030508;
+      padding: 6px;
+      overflow: hidden;
+    }
+
+    .viewfinder {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      max-width: 100%;
+      max-height: 100%;
+      border-radius: 16px;
+      overflow: hidden;
+      background: #0b1019;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      background: #000;
+    }
+
+    #video.mirrored {
+      transform: scaleX(-1);
+    }
+
+    #uploadedImg {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #05080f;
+      display: block;
+    }
+
+    /* Photo Mode Top Floating Bar */
+    .photo-mode-bar {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 16;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: rgba(9, 13, 20, 0.88);
+      border: 1px solid rgba(6, 182, 212, 0.45);
+      font-size: 11px;
+      font-weight: 600;
+      color: #e2e8f0;
+      white-space: nowrap;
+    }
+
+    .photo-mode-btn {
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: #1e293b;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    /* Tap to Start Video Overlay (iPhone Low Power Mode / Autoplay Gate) */
+    .tap-play-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 18;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(9, 13, 20, 0.55);
+    }
+
+    .tap-play-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      border-radius: 999px;
+      background: var(--emerald);
+      color: #03150e;
+      font-size: 14px;
+      font-weight: 700;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Sleek iPhone Fallback Card when WebRTC getUserMedia is blocked/unavailable */
+    .fallback-card {
+      position: absolute;
+      inset: 0;
+      z-index: 17;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      text-align: center;
+      background: rgba(9, 13, 20, 0.94);
+    }
+
+    .fallback-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-strong);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #34d399;
+      margin-bottom: 10px;
+    }
+
+    .fallback-title {
+      margin: 0 0 6px;
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .fallback-msg {
+      margin: 0 0 16px;
+      font-size: 12.5px;
+      line-height: 1.45;
+      color: var(--text-muted);
+      max-width: 310px;
+    }
+
+    .fallback-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+      max-width: 260px;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      height: 42px;
+      padding: 0 16px;
+      border-radius: 12px;
+      background: var(--emerald);
+      color: #031810;
+      font-size: 13.5px;
+      font-weight: 700;
+    }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      height: 40px;
+      padding: 0 14px;
+      border-radius: 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-strong);
+      color: var(--text-main);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .btn-cyan {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      height: 42px;
+      padding: 0 16px;
+      border-radius: 12px;
+      background: var(--cyan);
+      color: #031920;
+      font-size: 13.5px;
+      font-weight: 700;
+    }
+
+    /* Live WYSIWYG Stamp Overlay (Zero App Watermark) */
+    .stamp-wrap {
+      pointer-events: none;
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 12;
+      padding: 10px;
+    }
+
+    .stamp-wrap.pos-top {
+      top: 0;
+      bottom: auto;
+    }
+
+    .stamp-wrap.style-bar {
+      padding: 0;
+    }
+
+    .stamp-card {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 10px;
+      border-radius: 14px;
+      background: rgba(6, 10, 18, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    }
+
+    .stamp-wrap.style-bar .stamp-card {
+      border-radius: 0;
+      background: rgba(6, 10, 18, 0.8);
+      border-left: none;
+      border-right: none;
+      padding: 9px 12px;
+    }
+
+    .stamp-wrap.style-minimal .stamp-card {
+      background: transparent;
+      border: none;
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+      box-shadow: none;
+      padding: 4px;
+    }
+
+    .minimap-box {
+      width: 72px;
+      height: 72px;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1.5px solid rgba(255, 255, 255, 0.28);
+      background: #0f172a;
+      flex-shrink: 0;
+    }
+
+    .minimap-box canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .stamp-text {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.92);
+    }
+
+    .st-research {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 5px;
+      font-size: 10.5px;
+      line-height: 1.25;
+    }
+
+    .st-badge {
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: rgba(16, 185, 129, 0.25);
+      border: 1px solid rgba(52, 211, 153, 0.45);
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: #6ee7b7;
+    }
+
+    .st-project {
+      font-weight: 600;
+      color: #a5f3fc;
+    }
+
+    .st-researcher {
+      color: #e2e8f0;
+    }
+
+    .st-title {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #ffffff;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .st-addr {
+      font-size: 10.5px;
+      color: #e2e8f0;
+      line-height: 1.25;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .st-mono {
+      font-family: var(--font-mono);
+      font-size: 9.8px;
+      line-height: 1.3;
+      color: #f1f5f9;
+      word-break: break-word;
+    }
+
+    .st-wx {
+      font-family: var(--font-mono);
+      font-size: 9.8px;
+      line-height: 1.3;
+      color: #a5f3fc;
+      word-break: break-word;
+    }
+
+    .st-time {
+      font-family: var(--font-mono);
+      font-size: 9.5px;
+      color: #cbd5e1;
+    }
+
+    .st-notes {
+      font-size: 10.5px;
+      font-style: italic;
+      color: #fde68a;
+      line-height: 1.25;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* Shutter Flash */
+    .shutter-flash {
+      pointer-events: none;
+      position: absolute;
+      inset: 0;
+      z-index: 30;
+      background: #fff;
+      opacity: 0;
+      transition: opacity 120ms ease;
+    }
+    .shutter-flash.active { opacity: 0.8; }
+
+    /* =========================================================================
+       5. SESSION GALLERY STRIP & BOTTOM CONTROLS
+    ========================================================================= */
+    .session-strip {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 6px 10px;
+      background: var(--bg-panel);
+      border-top: 1px solid var(--border);
+    }
+
+    .session-thumbs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .thumb-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 9px;
+      overflow: hidden;
+      border: 1.5px solid var(--border-strong);
+      flex-shrink: 0;
+      background: #000;
+    }
+
+    .thumb-btn img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .csv-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      height: 34px;
+      padding: 0 11px;
+      border-radius: 10px;
+      background: var(--cyan-soft);
+      border: 1px solid rgba(6, 182, 212, 0.45);
+      color: #67e8f9;
+      font-size: 11.5px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .bottom-bar {
+      flex-shrink: 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr auto 1fr;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px 12px;
+      background: rgba(9, 13, 20, 0.98);
+      border-top: 1px solid var(--border);
+    }
+
+    .ctrl-tile {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      height: 50px;
+      border-radius: 13px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      color: var(--text-sub);
+      font-size: 10px;
+      font-weight: 600;
+      padding: 0 4px;
+    }
+
+    .ctrl-tile.native-accent {
+      background: rgba(16, 185, 129, 0.12);
+      border-color: rgba(16, 185, 129, 0.35);
+      color: #6ee7b7;
+    }
+
+    .shutter-btn {
+      width: 66px;
+      height: 66px;
+      border-radius: 50%;
+      padding: 4px;
+      border: 3px solid #ffffff;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 4px;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.55);
+    }
+
+    .shutter-inner {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: #ffffff;
+      display: block;
+    }
+
+    /* =========================================================================
+       6. MODALS & iOS-SCROLLABLE SETTINGS SHEET
+    ========================================================================= */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      background: rgba(0, 0, 0, 0.78);
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .modal-backdrop.center {
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+    }
+
+    .sheet {
+      width: 100%;
+      max-width: 430px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-panel);
+      border-left: 1px solid var(--border-strong);
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    .sheet-header {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      background: var(--bg-base);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sheet-title {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .sheet-sub {
+      margin: 2px 0 0;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .preset-row {
+      flex-shrink: 0;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      padding: 8px 14px;
+      background: rgba(9, 13, 20, 0.75);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .preset-btn {
+      height: 32px;
+      border-radius: 9px;
+      font-size: 11.5px;
+      font-weight: 700;
+      border: 1px solid var(--border-strong);
+      background: var(--bg-card);
+      color: var(--text-sub);
+    }
+
+    .preset-btn.p-all { background: var(--emerald-soft); border-color: rgba(16, 185, 129, 0.45); color: #6ee7b7; }
+    .preset-btn.p-res { background: var(--cyan-soft); border-color: rgba(6, 182, 212, 0.45); color: #67e8f9; }
+
+    .sheet-body {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .sheet-footer {
+      flex-shrink: 0;
+      padding: 10px 14px;
+      background: var(--bg-base);
+      border-top: 1px solid var(--border);
+    }
+
+    .sec-head {
+      margin: 0 0 8px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #34d399;
+    }
+
+    .sec-head.cyan { color: #22d3ee; }
+    .sec-head.amber { color: #fbbf24; }
+
+    .seg-grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .seg-grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+    }
+
+    .seg-btn {
+      height: 34px;
+      border-radius: 9px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--text-sub);
+    }
+
+    .seg-btn.active {
+      background: var(--emerald-soft);
+      border-color: rgba(16, 185, 129, 0.6);
+      color: #6ee7b7;
+    }
+
+    .field-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .text-input, .select-input, .textarea-input {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-strong);
+      color: #fff;
+      outline: none;
+    }
+
+    .text-input:focus, .select-input:focus, .textarea-input:focus {
+      border-color: var(--emerald);
+    }
+
+    .textarea-input {
+      resize: vertical;
+      min-height: 60px;
+    }
+
+    .toggle-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 11px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      font-size: 13px;
+      color: var(--text-main);
+    }
+
+    /* Native-feeling iOS toggle switch */
+    .switch {
+      position: relative;
+      width: 42px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+    }
+
+    .slider {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: #334155;
+      transition: background 180ms ease;
+    }
+
+    .slider::before {
+      content: "";
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      left: 3px;
+      top: 3px;
+      border-radius: 50%;
+      background: #fff;
+      transition: transform 180ms ease;
+    }
+
+    .switch input:checked + .slider {
+      background: var(--emerald);
+    }
+
+    .switch input:checked + .slider::before {
+      transform: translateX(18px);
+    }
+
+    .switch.cyan input:checked + .slider {
+      background: var(--cyan);
+    }
+
+    .switch.amber input:checked + .slider {
+      background: var(--amber);
+    }
+
+    .manual-box {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px;
+      border-radius: 12px;
+      background: rgba(11, 17, 27, 0.9);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+    }
+
+    .attr-note {
+      padding: 10px;
+      border-radius: 10px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      font-size: 11px;
+      line-height: 1.45;
+      color: var(--text-muted);
+    }
+
+    /* Preview Modal Card */
+    .preview-card {
+      width: 100%;
+      max-width: 560px;
+      max-height: 92%;
+      display: flex;
+      flex-direction: column;
+      border-radius: 20px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-strong);
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+    }
+
+    .preview-img-wrap {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #04070d;
+      padding: 10px;
+      overflow: hidden;
+    }
+
+    .preview-img-wrap img {
+      max-width: 100%;
+      max-height: 55vh;
+      object-fit: contain;
+      border-radius: 10px;
+      display: block;
+      -webkit-touch-callout: default; /* Allow iPhone touch & hold to Save to Photos */
+    }
+
+    .preview-actions {
+      flex-shrink: 0;
+      padding: 12px;
+      background: var(--bg-panel);
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .preview-btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .iphone-tip {
+      margin: 0;
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* Toast Stack */
+    .toast-stack {
+      pointer-events: none;
+      position: fixed;
+      top: calc(env(safe-area-inset-top, 0px) + 52px);
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 80;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      width: 90%;
+      max-width: 340px;
+    }
+
+    .toast {
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(16, 23, 34, 0.95);
+      border: 1px solid var(--border-strong);
+      color: #f8fafc;
+      font-size: 12px;
+      font-weight: 600;
+      text-align: center;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      transition: opacity 220ms ease, transform 220ms ease;
+    }
+    .toast.ok { border-color: rgba(16, 185, 129, 0.6); color: #6ee7b7; }
+    .toast.warn { border-color: rgba(245, 158, 11, 0.6); color: #fde68a; }
+    .toast.err { border-color: rgba(239, 68, 68, 0.6); color: #fca5a5; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- =====================================================================
+         TOP TELEMETRY HUD BAR
+    ====================================================================== -->
+    <header class="top-bar">
+      <div class="top-group">
+        <button id="gpsPillBtn" type="button" class="pill-btn mono" title="Tap to refresh GPS & Telemetry">
+          <span id="gpsDot" class="dot pulse"></span>
+          <span id="gpsPillText" class="truncate">GPS...</span>
+        </button>
+
+        <button id="wxPillBtn" type="button" class="pill-btn mono" title="Tap to refresh Weather">
+          <span id="wxDot" class="dot idle"></span>
+          <span id="wxPillText" class="truncate">WX --</span>
+        </button>
+      </div>
+
+      <div class="top-group">
+        <button id="compassBtn" type="button" class="pill-btn accent-cyan" title="Enable Compass Heading on iOS">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+          </svg>
+          <span id="compassBtnText">Hdg</span>
+        </button>
+
+        <button id="flipBtn" type="button" class="icon-btn" title="Flip Front / Rear Camera" aria-label="Flip Camera">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 2v6h-6"></path>
+            <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+            <path d="M3 22v-6h6"></path>
+            <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+          </svg>
+        </button>
+
+        <button id="openStampBtn" type="button" class="pill-btn accent-emerald" title="Configure Stamp Fields">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" y1="21" x2="4" y2="14"></line>
+            <line x1="4" y1="10" x2="4" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12" y2="3"></line>
+            <line x1="20" y1="21" x2="20" y2="16"></line>
+            <line x1="20" y1="12" x2="20" y2="3"></line>
+            <line x1="1" y1="14" x2="7" y2="14"></line>
+            <line x1="9" y1="8" x2="15" y2="8"></line>
+            <line x1="17" y1="16" x2="23" y2="16"></line>
+          </svg>
+          <span>Stamp</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- =====================================================================
+         QUICK SAMPLE BAR
+    ====================================================================== -->
+    <section class="sample-bar">
+      <div class="sample-left">
+        <span class="sample-label">ID</span>
+        <input id="quickSampleInput" type="text" class="sample-input" maxlength="48" placeholder="SMP-001" />
+        <button id="quickIncBtn" type="button" class="mini-chip-btn" title="Increment Sample ID">+1</button>
+      </div>
+
+      <label class="auto-inc-label" title="Auto-increment Sample ID after capture">
+        <input id="quickAutoInc" type="checkbox" />
+        <span>Auto</span>
+      </label>
+
+      <button id="quickNotesBtn" type="button" class="notes-quick-btn" title="Edit Field Notes">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+        </svg>
+        <span id="quickNotesLabel">Note</span>
+      </button>
+    </section>
+
+    <!-- Collapsible Inline Quick Notes Bar -->
+    <section id="quickNotesBar" class="quick-notes-bar hidden">
+      <input id="quickNotesInput" type="text" class="quick-notes-input" maxlength="160" placeholder="Enter field observation notes..." />
+      <button id="closeQuickNotesBtn" type="button" class="mini-chip-btn" style="color:#fde68a;">Done</button>
+    </section>
+
+    <!-- =====================================================================
+         MAIN VIEWFINDER STAGE
+    ====================================================================== -->
+    <main class="stage">
+      <div id="viewfinder" class="viewfinder">
+        <!-- iOS-Safe Live Camera Video -->
+        <video id="video" autoplay muted playsinline webkit-playsinline></video>
+
+        <!-- Library Photo Preview (when user picks a photo to stamp) -->
+        <img id="uploadedImg" class="hidden" alt="Selected field photo" />
+
+        <!-- Photo Mode Floating Bar -->
+        <div id="photoModeBar" class="photo-mode-bar hidden">
+          <span>Photo Mode</span>
+          <button id="stampNowBtn" type="button" class="photo-mode-btn" style="background:#10b981;color:#031810;">Stamp Now</button>
+          <button id="exitPhotoModeBtn" type="button" class="photo-mode-btn">Live Cam</button>
+        </div>
+
+        <!-- Tap to Start Live Video Overlay (iPhone Low Power Mode / Gesture Gate) -->
+        <div id="tapPlayOverlay" class="tap-play-overlay hidden">
+          <button id="tapPlayBtn" type="button" class="tap-play-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            <span>Tap to Start Live Camera</span>
+          </button>
+        </div>
+
+        <!-- Fallback Card when WebRTC Camera is Blocked/Unavailable -->
+        <div id="fallbackCard" class="fallback-card hidden">
+          <div class="fallback-icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+              <circle cx="12" cy="13" r="4"></circle>
+            </svg>
+          </div>
+          <h2 id="fallbackTitle" class="fallback-title">Camera Ready</h2>
+          <p id="fallbackMsg" class="fallback-msg">
+            Start the live viewfinder, or use iPhone's Native Camera / Photos Library to immediately stamp high-res images.
+          </p>
+          <div class="fallback-actions">
+            <button id="fbStartLiveBtn" type="button" class="btn-primary">Start Live Camera</button>
+            <button id="fbNativeCamBtn" type="button" class="btn-cyan">Use Native iPhone Camera</button>
+            <button id="fbLibraryBtn" type="button" class="btn-secondary">Pick from Photos</button>
+          </div>
+        </div>
+
+        <!-- LIVE WYSIWYG RESEARCH STAMP OVERLAY (ZERO WATERMARK) -->
+        <div id="liveStampWrap" class="stamp-wrap">
+          <div id="liveStampCard" class="stamp-card">
+            <div id="liveMiniMapBox" class="minimap-box">
+              <canvas id="liveMiniMapCanvas" width="256" height="256"></canvas>
+            </div>
+            <div id="liveStampText" class="stamp-text">
+              <div id="stResearchRow" class="st-research hidden">
+                <span id="stSampleBadge" class="st-badge hidden"></span>
+                <span id="stProject" class="st-project hidden"></span>
+                <span id="stResearcher" class="st-researcher hidden"></span>
+              </div>
+              <div id="stTitle" class="st-title hidden"></div>
+              <div id="stAddr" class="st-addr hidden"></div>
+              <div id="stTelemetry" class="st-mono hidden"></div>
+              <div id="stWeather" class="st-wx hidden"></div>
+              <div id="stTime" class="st-time hidden"></div>
+              <div id="stNotes" class="st-notes hidden"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Shutter Flash -->
+        <div id="shutterFlash" class="shutter-flash"></div>
+      </div>
+    </main>
+
+    <!-- =====================================================================
+         SESSION GALLERY STRIP + CSV LOG EXPORT
+    ====================================================================== -->
+    <section id="sessionStrip" class="session-strip hidden">
+      <div id="sessionThumbs" class="session-thumbs"></div>
+      <button id="exportCsvBtn" type="button" class="csv-btn" title="Download Session CSV Log">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        <span id="csvBtnText">CSV Log</span>
+      </button>
+    </section>
+
+    <!-- =====================================================================
+         BOTTOM CAMERA CONTROLS BAR
+    ====================================================================== -->
+    <footer class="bottom-bar">
+      <!-- Hidden iPhone-safe file inputs -->
+      <input id="nativeCamInput" type="file" accept="image/*" capture="environment" class="hidden" />
+      <input id="libraryInput" type="file" accept="image/*" class="hidden" />
+
+      <button id="nativeCamBtn" type="button" class="ctrl-tile native-accent" title="Open Native iPhone Camera & Auto-Stamp">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+          <circle cx="12" cy="13" r="4"></circle>
+        </svg>
+        <span>Native Cam</span>
+      </button>
+
+      <button id="libraryBtn" type="button" class="ctrl-tile" title="Pick Photo from Library">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <circle cx="8.5" cy="8.5" r="1.5"></circle>
+          <polyline points="21 15 16 10 5 21"></polyline>
+        </svg>
+        <span>Library</span>
+      </button>
+
+      <button id="shutterBtn" type="button" class="shutter-btn" aria-label="Capture Stamped Photo">
+        <span class="shutter-inner"></span>
+      </button>
+
+      <button id="aspectBtn" type="button" class="ctrl-tile" title="Cycle Aspect Ratio">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+        </svg>
+        <span id="aspectLabel">Native</span>
+      </button>
+    </footer>
+  </div>
+
+  <!-- =====================================================================
+       STAMP SETTINGS & TELEMETRY DRAWER (iOS-SCROLLABLE SHEET)
+  ====================================================================== -->
+  <div id="settingsModal" class="modal-backdrop hidden">
+    <div class="sheet">
+      <div class="sheet-header">
+        <div>
+          <h2 class="sheet-title">Stamp &amp; Field Telemetry</h2>
+          <p class="sheet-sub">Toggle any field ON/OFF • Zero app watermark</p>
+        </div>
+        <button id="closeSettingsBtn" type="button" class="icon-btn" aria-label="Close Settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="preset-row">
+        <button id="presetAllBtn" type="button" class="preset-btn p-all">All On</button>
+        <button id="presetResearchBtn" type="button" class="preset-btn p-res">Research Full</button>
+        <button id="presetMinimalBtn" type="button" class="preset-btn">Minimal</button>
+      </div>
+
+      <div class="sheet-body">
+        <!-- 1. Style & Format -->
+        <div>
+          <h3 class="sec-head">1. Style &amp; Format</h3>
+          <div class="seg-grid-3" style="margin-bottom:8px;">
+            <button type="button" data-style="glass" class="seg-btn style-opt">Scientific</button>
+            <button type="button" data-style="bar" class="seg-btn style-opt">Data Bar</button>
+            <button type="button" data-style="minimal" class="seg-btn style-opt">Minimal</button>
+          </div>
+          <div class="seg-grid-2" style="margin-bottom:10px;">
+            <button type="button" data-pos="bottom" class="seg-btn pos-opt">Bottom Stamp</button>
+            <button type="button" data-pos="top" class="seg-btn pos-opt">Top Stamp</button>
+          </div>
+          <div class="seg-grid-3">
+            <div>
+              <label for="optUnits" class="field-label">Units</label>
+              <select id="optUnits" class="select-input">
+                <option value="metric">Metric</option>
+                <option value="imperial">Imperial</option>
+              </select>
+            </div>
+            <div>
+              <label for="optCoords" class="field-label">Coords</label>
+              <select id="optCoords" class="select-input">
+                <option value="decimal">Decimal</option>
+                <option value="dms">DMS</option>
+              </select>
+            </div>
+            <div>
+              <label for="optTime" class="field-label">Time</label>
+              <select id="optTime" class="select-input">
+                <option value="24h">24h</option>
+                <option value="12h">12h</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Research Metadata Inputs -->
+        <div>
+          <h3 class="sec-head">2. Research Metadata</h3>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div>
+              <label for="inpProject" class="field-label">Project / Site Name</label>
+              <input id="inpProject" type="text" class="text-input" maxlength="64" placeholder="e.g. Alpine Soil Plot B4" />
+            </div>
+            <div>
+              <label for="inpResearcher" class="field-label">Researcher / Collector</label>
+              <input id="inpResearcher" type="text" class="text-input" maxlength="48" placeholder="e.g. Dr. A. Sharma" />
+            </div>
+            <div>
+              <label for="inpNotes" class="field-label">Field Notes / Observations</label>
+              <textarea id="inpNotes" class="textarea-input" maxlength="160" placeholder="e.g. Moist topsoil 0-15cm, north slope"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. All 16 Individual Field Toggles -->
+        <div>
+          <h3 class="sec-head">3. Stamp Elements (16 Toggles)</h3>
+          <div class="toggle-list">
+            <label class="toggle-row"><span>1. Mini-Map Picture</span><span class="switch"><input id="togMiniMap" type="checkbox" /><span class="slider"></span></span></label>
+            <label class="toggle-row"><span>2. Sample ID</span><span class="switch"><input id="togSample" type="checkbox" /><span class="slider"></span></span></label>
+            <label class="toggle-row"><span>3. Project Name</span><span class="switch"><input id="togProject" type="checkbox" /><span class="slider"></span></span></label>
+            <label class="toggle-row"><span>4. Researcher Name</span><span class="switch"><input id="togResearcher" type="checkbox" /><span class="slider"></span></span></label>
+            <label class="toggle-row"><span>5. Field Notes</span><span class="switch"><input id="togNotes" type="checkbox" /><span class="slider"></span></span></label>
+            <label class="toggle-row"><span>6. Location / Address</span><span class="switch"><input id="togAddress" type="checkbox" /><span class="slider"></span></span></label>
+            <label class="toggle-row"><span>7. GPS Coordinates</span><span class="switch"><input id="togCoords" type="checkbox" /><span class="slider"></span></span></label>
+            <label class="toggle-row"><span>8. Altitude (GPS / DEM)</span><span class="switch"><input id="togAltitude" type="checkbox" /><span class="slider"></span></span></label>
+            <label class="toggle-row"><span>9. GPS Accuracy</span><span class="switch"><input id="togAccuracy" type="checkbox" /><span class="slider"></span></span></label>
+            <label class="toggle-row"><span>10. Compass Heading</span><span class="switch"><input id="togHeading" type="checkbox" /><span class="slider"></span></span></label>
+            <label class="toggle-row"><span>11. Date &amp; Time</span><span class="switch"><input id="togTime" type="checkbox" /><span class="slider"></span></span></label>
+            <label class="toggle-row"><span>12. Weather Condition</span><span class="switch cyan"><input id="togWxCond" type="checkbox" /><span class="slider"></span></span></label>
+            <label class="toggle-row"><span>13. Temperature</span><span class="switch cyan"><input id="togTemp" type="checkbox" /><span class="slider"></span></span></label>
+            <label class="toggle-row"><span>14. Relative Humidity (RH)</span><span class="switch cyan"><input id="togHumidity" type="checkbox" /><span class="slider"></span></span></label>
+            <label class="toggle-row"><span>15. Wind Speed &amp; Direction</span><span class="switch cyan"><input id="togWind" type="checkbox" /><span class="slider"></span></span></label>
+            <label class="toggle-row"><span>16. Barometric Pressure</span><span class="switch cyan"><input id="togPressure" type="checkbox" /><span class="slider"></span></span></label>
+          </div>
+        </div>
+
+        <!-- 4. Manual Override & Telemetry Refresh -->
+        <div>
+          <h3 class="sec-head amber">4. Offline / Manual Override</h3>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <button id="refreshTelemetryBtn" type="button" class="btn-secondary" style="width:100%;">
+              Refresh Live GPS, Address &amp; Weather
+            </button>
+
+            <label class="toggle-row">
+              <span style="font-weight:600;color:#fde68a;">Manual Override Mode</span>
+              <span class="switch amber"><input id="optManualMode" type="checkbox" /><span class="slider"></span></span>
+            </label>
+
+            <div id="manualBox" class="manual-box hidden">
+              <div class="seg-grid-2">
+                <div>
+                  <label class="field-label">Latitude</label>
+                  <input id="manLat" type="number" step="any" class="text-input" placeholder="30.7333" />
+                </div>
+                <div>
+                  <label class="field-label">Longitude</label>
+                  <input id="manLon" type="number" step="any" class="text-input" placeholder="76.7794" />
+                </div>
+              </div>
+              <button id="fetchManualBtn" type="button" class="btn-cyan" style="height:36px;font-size:12px;">
+                Fetch Address, Map &amp; Weather for Coords
+              </button>
+              <div>
+                <label class="field-label">Location Name</label>
+                <input id="manTitle" type="text" class="text-input" placeholder="Chandigarh, India" />
+              </div>
+              <div>
+                <label class="field-label">Address / Locality</label>
+                <input id="manAddr" type="text" class="text-input" placeholder="Sector 17, Chandigarh" />
+              </div>
+              <div class="seg-grid-2">
+                <div>
+                  <label class="field-label">Altitude (m)</label>
+                  <input id="manAlt" type="number" step="any" class="text-input" placeholder="321" />
+                </div>
+                <div>
+                  <label class="field-label">Weather</label>
+                  <input id="manWxCond" type="text" class="text-input" placeholder="Partly Cloudy" />
+                </div>
+                <div>
+                  <label class="field-label">Temp (°C)</label>
+                  <input id="manTemp" type="number" step="0.1" class="text-input" placeholder="22.5" />
+                </div>
+                <div>
+                  <label class="field-label">RH (%)</label>
+                  <input id="manRh" type="number" step="1" class="text-input" placeholder="58" />
+                </div>
+                <div>
+                  <label class="field-label">Wind (m/s)</label>
+                  <input id="manWindMs" type="number" step="0.1" class="text-input" placeholder="3.2" />
+                </div>
+                <div>
+                  <label class="field-label">Wind Dir (°)</label>
+                  <input id="manWindDir" type="number" step="1" class="text-input" placeholder="315" />
+                </div>
+              </div>
+              <div>
+                <label class="field-label">Pressure (hPa)</label>
+                <input id="manPressure" type="number" step="0.1" class="text-input" placeholder="1014" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- FOSS Data Attribution (UI only — never stamped on photos) -->
+        <div class="attr-note">
+          <strong>100% Client-Side &amp; Open Data:</strong> Photos are stamped locally on your device with zero app watermark. Geocoding &amp; map tiles via OpenStreetMap (Nominatim / Photon); weather &amp; DEM elevation via Open-Meteo.
+        </div>
+      </div>
+
+      <div class="sheet-footer">
+        <button id="doneSettingsBtn" type="button" class="btn-primary" style="width:100%;">
+          Apply &amp; Return to Camera
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       CAPTURE PREVIEW & iPHONE-FRIENDLY SAVE / SHARE MODAL
+  ====================================================================== -->
+  <div id="previewModal" class="modal-backdrop center hidden">
+    <div class="preview-card">
+      <div class="sheet-header">
+        <div style="min-width:0;">
+          <h3 id="previewFilename" class="sheet-title truncate" style="font-family:var(--font-mono);font-size:13px;">SMP-001.jpg</h3>
+          <p id="previewDims" class="sheet-sub" style="font-family:var(--font-mono);">-- × -- px</p>
+        </div>
+        <button id="closePreviewBtn" type="button" class="mini-chip-btn" style="color:#f8fafc;">Close</button>
+      </div>
+
+      <div class="preview-img-wrap">
+        <img id="capturedImg" alt="Stamped field research photo" />
+      </div>
+
+      <div class="preview-actions">
+        <button id="shareBtn" type="button" class="btn-primary" style="width:100%;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+            <polyline points="16 6 12 2 8 6"></polyline>
+            <line x1="12" y1="2" x2="12" y2="15"></line>
+          </svg>
+          <span>Save / Share Photo</span>
+        </button>
+
+        <div class="preview-btn-row">
+          <button id="dlJpgBtn" type="button" class="btn-secondary">Download JPG</button>
+          <button id="dlPngBtn" type="button" class="btn-secondary">Download PNG</button>
+        </div>
+
+        <p class="iphone-tip">iPhone tip: tap Share &rarr; Save Image, or touch &amp; hold the photo.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Stack -->
+  <div id="toastStack" class="toast-stack"></div>
+
+  <!-- =====================================================================
+       ZERO-DEPENDENCY iOS-SAFE FIELD RESEARCH CAMERA ENGINE
+  ====================================================================== -->
+  <script>
+    (function () {
+      'use strict';
+
+      /* ---------------------------------------------------------------------
+       * 1. CONSTANTS & WMO WEATHER CODE DECODER
+       * ------------------------------------------------------------------- */
+      var STORAGE_KEY = 'fr_gps_cam_ios_v3';
+
+      var ASPECTS = [
+        { label: 'Native', ratio: null },
+        { label: '4:3', ratio: 4 / 3 },
+        { label: '16:9', ratio: 16 / 9 },
+        { label: '1:1', ratio: 1 },
+      ];
+
+      var WMO_CODES = {
+        0: 'Clear Sky',
+        1: 'Mainly Clear',
+        2: 'Partly Cloudy',
+        3: 'Overcast',
+        45: 'Fog',
+        48: 'Rime Fog',
+        51: 'Light Drizzle',
+        53: 'Mod. Drizzle',
+        55: 'Dense Drizzle',
+        56: 'Freezing Drizzle',
+        57: 'Heavy Frz. Drizzle',
+        61: 'Light Rain',
+        63: 'Moderate Rain',
+        65: 'Heavy Rain',
+        66: 'Freezing Rain',
+        67: 'Heavy Frz. Rain',
+        71: 'Light Snow',
+        73: 'Moderate Snow',
+        75: 'Heavy Snow',
+        77: 'Snow Grains',
+        80: 'Light Showers',
+        81: 'Mod. Showers',
+        82: 'Heavy Showers',
+        85: 'Snow Showers',
+        86: 'Heavy Snow Showers',
+        95: 'Thunderstorm',
+        96: 'T-Storm w/ Hail',
+        99: 'Severe T-Storm',
+      };
+
+      var CARDINALS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+
+      var DEFAULT_SETTINGS = {
+        style: 'glass',         // 'glass' | 'bar' | 'minimal'
+        position: 'bottom',     // 'bottom' | 'top'
+        units: 'metric',        // 'metric' | 'imperial'
+        coordFormat: 'decimal', // 'decimal' | 'dms'
+        timeFormat: '24h',      // '24h' | '12h'
+
+        // 16 Individual Toggles
+        showMiniMap: true,
+        showSample: true,
+        showProject: true,
+        showResearcher: false,
+        showNotes: true,
+        showAddress: true,
+        showCoords: true,
+        showAltitude: true,
+        showAccuracy: true,
+        showHeading: true,
+        showTime: true,
+        showWxCond: true,
+        showTemp: true,
+        showHumidity: true,
+        showWind: true,
+        showPressure: true,
+
+        // Research Text
+        sampleName: 'SMP-001',
+        autoInc: true,
+        projectName: '',
+        researcher: '',
+        notes: '',
+
+        // Manual Override
+        manualMode: false,
+        manLat: '',
+        manLon: '',
+        manAlt: '',
+        manTitle: '',
+        manAddr: '',
+        manWxCond: '',
+        manTemp: '',
+        manRh: '',
+        manWindMs: '',
+        manWindDir: '',
+        manPressure: '',
+      };
+
+      function loadSettings() {
+        try {
+          var raw = window.localStorage && localStorage.getItem(STORAGE_KEY);
+          if (!raw) return Object.assign({}, DEFAULT_SETTINGS);
+          return Object.assign({}, DEFAULT_SETTINGS, JSON.parse(raw));
+        } catch (e) {
+          return Object.assign({}, DEFAULT_SETTINGS);
+        }
+      }
+
+      function saveSettings() {
+        try {
+          if (window.localStorage) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state.settings));
+          }
+        } catch (e) {}
+      }
+
+      /* ---------------------------------------------------------------------
+       * 2. APPLICATION STATE
+       * ------------------------------------------------------------------- */
+      var state = {
+        stream: null,
+        facingMode: 'environment',
+        aspectIdx: 0,
+        uploadedImg: null,
+        geoWatchId: null,
+        compassActive: false,
+
+        gps: {
+          status: 'searching', // 'searching' | 'locked' | 'error'
+          lat: null,
+          lon: null,
+          accuracy: null,
+          altitude: null,
+          gpsHeading: null,
+          compassHeading: null,
+          lastLat: null,
+          lastLon: null,
+          title: 'Acquiring GPS...',
+          address: '',
+          fetching: false,
+        },
+
+        wx: {
+          status: 'idle',
+          cond: null,
+          tempC: null,
+          rh: null,
+          windMs: null,
+          windDir: null,
+          pressure: null,
+          demElev: null,
+        },
+
+        miniMap: {
+          canvas: document.createElement('canvas'),
+          lat: null,
+          lon: null,
+          isOsm: false,
+        },
+
+        settings: loadSettings(),
+        photos: [],
+        activePhoto: null,
+      };
+
+      state.miniMap.canvas.width = 256;
+      state.miniMap.canvas.height = 256;
+
+      /* ---------------------------------------------------------------------
+       * 3. DOM CACHE
+       * ------------------------------------------------------------------- */
+      function $(id) { return document.getElementById(id); }
+
+      var el = {
+        gpsPillBtn: $('gpsPillBtn'),
+        gpsDot: $('gpsDot'),
+        gpsPillText: $('gpsPillText'),
+        wxPillBtn: $('wxPillBtn'),
+        wxDot: $('wxDot'),
+        wxPillText: $('wxPillText'),
+        compassBtn: $('compassBtn'),
+        compassBtnText: $('compassBtnText'),
+        flipBtn: $('flipBtn'),
+        openStampBtn: $('openStampBtn'),
+
+        quickSampleInput: $('quickSampleInput'),
+        quickIncBtn: $('quickIncBtn'),
+        quickAutoInc: $('quickAutoInc'),
+        quickNotesBtn: $('quickNotesBtn'),
+        quickNotesLabel: $('quickNotesLabel'),
+        quickNotesBar: $('quickNotesBar'),
+        quickNotesInput: $('quickNotesInput'),
+        closeQuickNotesBtn: $('closeQuickNotesBtn'),
+
+        viewfinder: $('viewfinder'),
+        video: $('video'),
+        uploadedImg: $('uploadedImg'),
+        photoModeBar: $('photoModeBar'),
+        stampNowBtn: $('stampNowBtn'),
+        exitPhotoModeBtn: $('exitPhotoModeBtn'),
+        tapPlayOverlay: $('tapPlayOverlay'),
+        tapPlayBtn: $('tapPlayBtn'),
+        fallbackCard: $('fallbackCard'),
+        fallbackTitle: $('fallbackTitle'),
+        fallbackMsg: $('fallbackMsg'),
+        fbStartLiveBtn: $('fbStartLiveBtn'),
+        fbNativeCamBtn: $('fbNativeCamBtn'),
+        fbLibraryBtn: $('fbLibraryBtn'),
+        shutterFlash: $('shutterFlash'),
+
+        liveStampWrap: $('liveStampWrap'),
+        liveStampCard: $('liveStampCard'),
+        liveMiniMapBox: $('liveMiniMapBox'),
+        liveMiniMapCanvas: $('liveMiniMapCanvas'),
+        liveStampText: $('liveStampText'),
+        stResearchRow: $('stResearchRow'),
+        stSampleBadge: $('stSampleBadge'),
+        stProject: $('stProject'),
+        stResearcher: $('stResearcher'),
+        stTitle: $('stTitle'),
+        stAddr: $('stAddr'),
+        stTelemetry: $('stTelemetry'),
+        stWeather: $('stWeather'),
+        stTime: $('stTime'),
+        stNotes: $('stNotes'),
+
+        sessionStrip: $('sessionStrip'),
+        sessionThumbs: $('sessionThumbs'),
+        exportCsvBtn: $('exportCsvBtn'),
+        csvBtnText: $('csvBtnText'),
+
+        nativeCamInput: $('nativeCamInput'),
+        libraryInput: $('libraryInput'),
+        nativeCamBtn: $('nativeCamBtn'),
+        libraryBtn: $('libraryBtn'),
+        shutterBtn: $('shutterBtn'),
+        aspectBtn: $('aspectBtn'),
+        aspectLabel: $('aspectLabel'),
+
+        settingsModal: $('settingsModal'),
+        closeSettingsBtn: $('closeSettingsBtn'),
+        doneSettingsBtn: $('doneSettingsBtn'),
+        presetAllBtn: $('presetAllBtn'),
+        presetResearchBtn: $('presetResearchBtn'),
+        presetMinimalBtn: $('presetMinimalBtn'),
+        optUnits: $('optUnits'),
+        optCoords: $('optCoords'),
+        optTime: $('optTime'),
+
+        inpProject: $('inpProject'),
+        inpResearcher: $('inpResearcher'),
+        inpNotes: $('inpNotes'),
+
+        togMiniMap: $('togMiniMap'),
+        togSample: $('togSample'),
+        togProject: $('togProject'),
+        togResearcher: $('togResearcher'),
+        togNotes: $('togNotes'),
+        togAddress: $('togAddress'),
+        togCoords: $('togCoords'),
+        togAltitude: $('togAltitude'),
+        togAccuracy: $('togAccuracy'),
+        togHeading: $('togHeading'),
+        togTime: $('togTime'),
+        togWxCond: $('togWxCond'),
+        togTemp: $('togTemp'),
+        togHumidity: $('togHumidity'),
+        togWind: $('togWind'),
+        togPressure: $('togPressure'),
+
+        refreshTelemetryBtn: $('refreshTelemetryBtn'),
+        optManualMode: $('optManualMode'),
+        manualBox: $('manualBox'),
+        manLat: $('manLat'),
+        manLon: $('manLon'),
+        manAlt: $('manAlt'),
+        fetchManualBtn: $('fetchManualBtn'),
+        manTitle: $('manTitle'),
+        manAddr: $('manAddr'),
+        manWxCond: $('manWxCond'),
+        manTemp: $('manTemp'),
+        manRh: $('manRh'),
+        manWindMs: $('manWindMs'),
+        manWindDir: $('manWindDir'),
+        manPressure: $('manPressure'),
+
+        previewModal: $('previewModal'),
+        closePreviewBtn: $('closePreviewBtn'),
+        previewFilename: $('previewFilename'),
+        previewDims: $('previewDims'),
+        capturedImg: $('capturedImg'),
+        shareBtn: $('shareBtn'),
+        dlJpgBtn: $('dlJpgBtn'),
+        dlPngBtn: $('dlPngBtn'),
+
+        toastStack: $('toastStack'),
+      };
+
+      /* ---------------------------------------------------------------------
+       * 4. UTILITY HELPERS
+       * ------------------------------------------------------------------- */
+      function toast(msg, type) {
+        var node = document.createElement('div');
+        node.className = 'toast' + (type ? ' ' + type : '');
+        node.textContent = msg;
+        el.toastStack.appendChild(node);
+        setTimeout(function () {
+          node.style.opacity = '0';
+          node.style.transform = 'translateY(-6px)';
+          setTimeout(function () {
+            if (node.parentNode) node.parentNode.removeChild(node);
+          }, 240);
+        }, 2400);
+      }
+
+      function haversineM(lat1, lon1, lat2, lon2) {
+        var R = 6371000;
+        var rad = Math.PI / 180;
+        var dLat = (lat2 - lat1) * rad;
+        var dLon = (lon2 - lon1) * rad;
+        var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * rad) * Math.cos(lat2 * rad) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      }
+
+      function degToCardinal(deg) {
+        if (deg === null || deg === undefined || isNaN(deg)) return '';
+        var norm = ((deg % 360) + 360) % 360;
+        return CARDINALS[Math.round(norm / 22.5) % 16];
+      }
+
+      function incrementSample(str) {
+        var clean = (str || '').trim();
+        if (!clean) return 'SMP-001';
+        var m = clean.match(/^(.*?)(\d+)$/);
+        if (m) {
+          var next = String(parseInt(m[2], 10) + 1);
+          while (next.length < m[2].length) next = '0' + next;
+          return m[1] + next;
+        }
+        return clean + '-002';
+      }
+
+      function formatCoords(lat, lon, fmt) {
+        if (lat === null || lon === null || isNaN(lat) || isNaN(lon)) return 'GPS --';
+        var latD = lat >= 0 ? 'N' : 'S';
+        var lonD = lon >= 0 ? 'E' : 'W';
+        var aLat = Math.abs(lat);
+        var aLon = Math.abs(lon);
+        if (fmt === 'dms') {
+          var dms = function (v, d) {
+            var deg = Math.floor(v);
+            var mf = (v - deg) * 60;
+            var min = Math.floor(mf);
+            var sec = ((mf - min) * 60).toFixed(1);
+            return deg + '°' + (min < 10 ? '0' : '') + min + "'" + sec + '"' + d;
+          };
+          return dms(aLat, latD) + ' ' + dms(aLon, lonD);
+        }
+        return aLat.toFixed(5) + '°' + latD + ', ' + aLon.toFixed(5) + '°' + lonD;
+      }
+
+      function formatTime(date) {
+        var d = date || new Date();
+        var use12 = state.settings.timeFormat === '12h';
+        var pad = function (n) { return n < 10 ? '0' + n : '' + n; };
+        var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        var datePart = pad(d.getDate()) + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+        var hrs = d.getHours();
+        var ampm = '';
+        if (use12) {
+          ampm = hrs >= 12 ? ' PM' : ' AM';
+          hrs = hrs % 12;
+          if (hrs === 0) hrs = 12;
+        }
+        var timePart = pad(hrs) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) + ampm;
+        return datePart + ' ' + timePart;
+      }
+
+      function buildFilename(date) {
+        var d = date || new Date();
+        var pad = function (n) { return n < 10 ? '0' + n : '' + n; };
+        var ts = d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '_' +
+                 pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds());
+        var smp = (state.settings.sampleName || '').trim().replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '');
+        return (smp ? smp + '_' : 'GPS_') + ts;
+      }
+
+      function fetchWithTimeout(url, ms) {
+        var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        var timer = controller ? setTimeout(function () { controller.abort(); }, ms) : null;
+        var opts = controller ? { signal: controller.signal } : {};
+        return fetch(url, opts).finally(function () {
+          if (timer) clearTimeout(timer);
+        });
+      }
+
+      /* ---------------------------------------------------------------------
+       * 5. ACTIVE TELEMETRY & STAMP BUILDER
+       * ------------------------------------------------------------------- */
+      function getTelemetry() {
+        var s = state.settings;
+        var imp = s.units === 'imperial';
+
+        if (s.manualMode) {
+          var lat = parseFloat(s.manLat);
+          var lon = parseFloat(s.manLon);
+          var alt = parseFloat(s.manAlt);
+          var temp = parseFloat(s.manTemp);
+          var rh = parseFloat(s.manRh);
+          var wMs = parseFloat(s.manWindMs);
+          var wDir = parseFloat(s.manWindDir);
+          var pres = parseFloat(s.manPressure);
+          return {
+            lat: isNaN(lat) ? null : lat,
+            lon: isNaN(lon) ? null : lon,
+            altM: isNaN(alt) ? null : alt,
+            altSrc: isNaN(alt) ? '' : 'Manual',
+            accM: null,
+            hdg: state.gps.compassHeading,
+            title: s.manTitle.trim() || (!isNaN(lat) && !isNaN(lon) ? 'Manual Location' : ''),
+            addr: s.manAddr.trim(),
+            wxCond: s.manWxCond.trim() || null,
+            tempC: isNaN(temp) ? null : temp,
+            rh: isNaN(rh) ? null : rh,
+            windMs: isNaN(wMs) ? null : wMs,
+            windDir: isNaN(wDir) ? null : wDir,
+            pressure: isNaN(pres) ? null : pres,
+            imp: imp,
+          };
+        }
+
+        var altM = null;
+        var altSrc = '';
+        if (state.gps.altitude !== null && !isNaN(state.gps.altitude)) {
+          altM = state.gps.altitude;
+          altSrc = 'GPS';
+        } else if (state.wx.demElev !== null && !isNaN(state.wx.demElev)) {
+          altM = state.wx.demElev;
+          altSrc = 'DEM';
+        }
+
+        var hdg = state.gps.compassHeading !== null ? state.gps.compassHeading
+                : (state.gps.gpsHeading !== null && !isNaN(state.gps.gpsHeading) ? state.gps.gpsHeading : null);
+
+        return {
+          lat: state.gps.lat,
+          lon: state.gps.lon,
+          altM: altM,
+          altSrc: altSrc,
+          accM: state.gps.accuracy,
+          hdg: hdg,
+          title: state.gps.title,
+          addr: state.gps.address,
+          wxCond: state.wx.cond,
+          tempC: state.wx.tempC,
+          rh: state.wx.rh,
+          windMs: state.wx.windMs,
+          windDir: state.wx.windDir,
+          pressure: state.wx.pressure,
+          imp: imp,
+        };
+      }
+
+      function buildStampData(date) {
+        var s = state.settings;
+        var d = getTelemetry();
+
+        var sample = s.showSample && s.sampleName.trim() ? s.sampleName.trim() : '';
+        var project = s.showProject && s.projectName.trim() ? s.projectName.trim() : '';
+        var researcher = s.showResearcher && s.researcher.trim() ? s.researcher.trim() : '';
+        var notes = s.showNotes && s.notes.trim() ? s.notes.trim() : '';
+        var title = s.showAddress && d.title ? d.title : '';
+        var addr = s.showAddress && d.addr ? d.addr : '';
+
+        var tel = [];
+        if (s.showCoords) tel.push(formatCoords(d.lat, d.lon, s.coordFormat));
+        if (s.showAltitude && d.altM !== null) {
+          var aVal = d.imp ? Math.round(d.altM * 3.28084) + 'ft' : Math.round(d.altM) + 'm';
+          tel.push('Alt ' + aVal + (d.altSrc ? ' (' + d.altSrc + ')' : ''));
+        }
+        if (s.showAccuracy && d.accM !== null) {
+          var accVal = d.imp ? '±' + Math.round(d.accM * 3.28084) + 'ft' : '±' + Math.round(d.accM) + 'm';
+          tel.push('Acc ' + accVal);
+        }
+        if (s.showHeading && d.hdg !== null) {
+          var deg = Math.round(((d.hdg % 360) + 360) % 360);
+          var pad3 = deg < 10 ? '00' + deg : (deg < 100 ? '0' + deg : '' + deg);
+          tel.push('Hdg ' + pad3 + '° ' + degToCardinal(deg));
+        }
+
+        var wx = [];
+        if (s.showWxCond && d.wxCond) wx.push(d.wxCond);
+        if (s.showTemp && d.tempC !== null) {
+          var tVal = d.imp ? ((d.tempC * 9) / 5 + 32).toFixed(1) + '°F' : d.tempC.toFixed(1) + '°C';
+          wx.push(tVal);
+        }
+        if (s.showHumidity && d.rh !== null) wx.push('RH ' + Math.round(d.rh) + '%');
+        if (s.showWind && d.windMs !== null) {
+          var wVal = d.imp ? (d.windMs * 2.23694).toFixed(1) + ' mph' : d.windMs.toFixed(1) + ' m/s';
+          var wDir = d.windDir !== null ? ' ' + Math.round(d.windDir) + '° ' + degToCardinal(d.windDir) : '';
+          wx.push('Wind ' + wVal + wDir);
+        }
+        if (s.showPressure && d.pressure !== null) wx.push(Math.round(d.pressure) + ' hPa');
+
+        var timeStr = s.showTime ? formatTime(date) : '';
+
+        return {
+          sample: sample,
+          project: project,
+          researcher: researcher,
+          title: title,
+          addr: addr,
+          telemetryLine: tel.join(' • '),
+          weatherLine: wx.join(' • '),
+          timeStr: timeStr,
+          notes: notes,
+          hasText: Boolean(sample || project || researcher || title || addr || tel.length || wx.length || timeStr || notes),
+          raw: d,
+        };
+      }
+
+      /* ---------------------------------------------------------------------
+       * 6. iOS-SAFE LIVE CAMERA + FALLBACKS
+       * ------------------------------------------------------------------- */
+      function stopCamera() {
+        try {
+          if (state.stream) {
+            state.stream.getTracks().forEach(function (t) { t.stop(); });
+            state.stream = null;
+          }
+          el.video.srcObject = null;
+        } catch (e) {}
+      }
+
+      function showFallback(title, msg) {
+        el.fallbackTitle.textContent = title;
+        el.fallbackMsg.textContent = msg;
+        el.fallbackCard.classList.remove('hidden');
+        el.tapPlayOverlay.classList.add('hidden');
+      }
+
+      function startCamera() {
+        stopCamera();
+        el.fallbackCard.classList.add('hidden');
+        el.tapPlayOverlay.classList.add('hidden');
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          showFallback(
+            'Use Native iPhone Camera',
+            'Live browser camera is restricted in this view. Tap "Use Native iPhone Camera" or "Pick from Photos" below to stamp high-res photos immediately.'
+          );
+          return;
+        }
+
+        // Set iOS Safari playsinline & muted BEFORE assigning srcObject
+        var v = el.video;
+        v.playsInline = true;
+        v.muted = true;
+        v.setAttribute('playsinline', '');
+        v.setAttribute('webkit-playsinline', '');
+
+        var constraints = {
+          audio: false,
+          video: { facingMode: { ideal: state.facingMode } },
+        };
+
+        navigator.mediaDevices.getUserMedia(constraints)
+          .catch(function () {
+            return navigator.mediaDevices.getUserMedia({ audio: false, video: true });
+          })
+          .then(function (stream) {
+            state.stream = stream;
+            v.srcObject = stream;
+            v.classList.toggle('mirrored', state.facingMode === 'user');
+
+            var tryPlay = function () {
+              var p = v.play();
+              if (p && typeof p.then === 'function') {
+                p.then(function () {
+                  el.tapPlayOverlay.classList.add('hidden');
+                }).catch(function () {
+                  // iPhone Low Power Mode or gesture restriction
+                  el.tapPlayOverlay.classList.remove('hidden');
+                });
+              }
+            };
+
+            v.onloadedmetadata = tryPlay;
+            tryPlay();
+          })
+          .catch(function (err) {
+            var denied = err && err.name === 'NotAllowedError';
+            showFallback(
+              denied ? 'Camera Permission Needed' : 'Live Camera Unavailable',
+              denied
+                ? 'Allow camera access in Safari settings, or tap "Use Native iPhone Camera" below.'
+                : 'Tap "Use Native iPhone Camera" or "Pick from Photos" to capture and stamp images.'
+            );
+          });
+      }
+
+      function applyAspect() {
+        var cur = ASPECTS[state.aspectIdx];
+        el.aspectLabel.textContent = cur.label;
+        if (cur.ratio) {
+          el.viewfinder.style.aspectRatio = String(cur.ratio);
+          el.viewfinder.style.width = 'auto';
+          el.viewfinder.style.height = '100%';
+        } else {
+          el.viewfinder.style.aspectRatio = '';
+          el.viewfinder.style.width = '100%';
+          el.viewfinder.style.height = '100%';
+        }
+      }
+
+      /* ---------------------------------------------------------------------
+       * 7. COMPASS HEADING (WITH iOS requestPermission SUPPORT)
+       * ------------------------------------------------------------------- */
+      function attachCompassListener() {
+        if (state.compassActive) return;
+        state.compassActive = true;
+
+        var handler = function (ev) {
+          var h = null;
+          if (typeof ev.webkitCompassHeading === 'number' && !isNaN(ev.webkitCompassHeading)) {
+            h = ev.webkitCompassHeading;
+          } else if (ev.absolute && typeof ev.alpha === 'number' && !isNaN(ev.alpha)) {
+            h = (360 - ev.alpha) % 360;
+          }
+          if (h !== null) {
+            state.gps.compassHeading = h;
+            var deg = Math.round(((h % 360) + 360) % 360);
+            el.compassBtnText.textContent = deg + '° ' + degToCardinal(deg);
+          }
+        };
+
+        try {
+          if ('ondeviceorientationabsolute' in window) {
+            window.addEventListener('deviceorientationabsolute', handler, true);
+          } else if ('ondeviceorientation' in window) {
+            window.addEventListener('deviceorientation', handler, true);
+          }
+        } catch (e) {}
+      }
+
+      function requestCompassPermission() {
+        try {
+          if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+            DeviceOrientationEvent.requestPermission()
+              .then(function (res) {
+                if (res === 'granted') {
+                  attachCompassListener();
+                  toast('Compass heading enabled', 'ok');
+                } else {
+                  toast('Compass permission denied', 'warn');
+                }
+              })
+              .catch(function () {
+                toast('Compass unavailable on this device', 'warn');
+              });
+          } else {
+            attachCompassListener();
+            toast('Compass listener active', 'ok');
+          }
+        } catch (e) {
+          toast('Compass unavailable', 'warn');
+        }
+      }
+
+      /* ---------------------------------------------------------------------
+       * 8. GPS, FOSS GEOCODING (NOMINATIM + PHOTON) & OPEN-METEO WEATHER
+       * ------------------------------------------------------------------- */
+      function startGeolocation() {
+        try {
+          if (!navigator.geolocation) {
+            state.gps.status = 'error';
+            state.gps.title = 'Geolocation Unsupported';
+            updateHUD();
+            updateLiveStamp();
+            return;
+          }
+          if (state.geoWatchId !== null) {
+            navigator.geolocation.clearWatch(state.geoWatchId);
+          }
+          state.gps.status = 'searching';
+          updateHUD();
+
+          state.geoWatchId = navigator.geolocation.watchPosition(
+            function (pos) {
+              var c = pos.coords;
+              state.gps.status = 'locked';
+              state.gps.lat = c.latitude;
+              state.gps.lon = c.longitude;
+              state.gps.accuracy = c.accuracy;
+              state.gps.altitude = c.altitude;
+              if (c.heading !== null && !isNaN(c.heading)) state.gps.gpsHeading = c.heading;
+
+              updateHUD();
+
+              var moved = state.gps.lastLat === null || haversineM(state.gps.lastLat, state.gps.lastLon, c.latitude, c.longitude) > 25;
+              if (moved && !state.gps.fetching) {
+                fetchAllTelemetry(c.latitude, c.longitude, false);
+              }
+              updateLiveStamp();
+            },
+            function (err) {
+              state.gps.status = 'error';
+              if (state.gps.lat === null) {
+                state.gps.title = err && err.code === 1 ? 'Location Permission Denied' : 'GPS Signal Unavailable';
+                state.gps.address = 'Tap GPS pill to retry or use Manual Mode';
+              }
+              updateHUD();
+              updateLiveStamp();
+            },
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+          );
+        } catch (e) {
+          state.gps.status = 'error';
+          updateHUD();
+        }
+      }
+
+      function fetchAllTelemetry(lat, lon, isManual) {
+        if (!isManual) state.gps.fetching = true;
+
+        return Promise.all([
+          reverseGeocode(lat, lon, isManual),
+          fetchWeather(lat, lon, isManual),
+          loadMiniMap(lat, lon),
+        ]).finally(function () {
+          if (!isManual) {
+            state.gps.lastLat = lat;
+            state.gps.lastLon = lon;
+            state.gps.fetching = false;
+          }
+          updateHUD();
+          updateLiveStamp();
+        });
+      }
+
+      function parseNominatim(data) {
+        var a = data.address || {};
+        var loc = a.city || a.town || a.village || a.suburb || a.municipality || a.county || '';
+        var reg = a.state || a.region || '';
+        var ctry = a.country || '';
+        var title = [loc, reg, ctry].filter(Boolean).join(', ') || data.name || 'Pinned Location';
+        var parts = [a.house_number, a.road || a.pedestrian || a.path, a.neighbourhood || a.suburb, loc, reg, a.postcode, ctry].filter(Boolean);
+        var uniq = parts.filter(function (v, i, arr) { return arr.indexOf(v) === i; });
+        return { title: title, addr: uniq.join(', ') || data.display_name || '' };
+      }
+
+      function parsePhoton(feat) {
+        var p = feat.properties || {};
+        var loc = p.city || p.locality || p.district || p.county || '';
+        var reg = p.state || '';
+        var ctry = p.country || '';
+        var title = [loc, reg, ctry].filter(Boolean).join(', ') || p.name || 'Pinned Location';
+        var parts = [p.name && p.name !== loc ? p.name : '', p.street, p.district, loc, reg, p.postcode, ctry].filter(Boolean);
+        var uniq = parts.filter(function (v, i, arr) { return arr.indexOf(v) === i; });
+        return { title: title, addr: uniq.join(', ') };
+      }
+
+      function reverseGeocode(lat, lon, isManual) {
+        var nomUrl = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=' + encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lon);
+        var phoUrl = 'https://photon.komoot.io/reverse?lat=' + encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lon);
+
+        return fetchWithTimeout(nomUrl, 6000)
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (d) { return d && !d.error ? parseNominatim(d) : null; })
+          .catch(function () { return null; })
+          .then(function (parsed) {
+            if (parsed) return parsed;
+            return fetchWithTimeout(phoUrl, 6000)
+              .then(function (r) { return r.ok ? r.json() : null; })
+              .then(function (d) { return d && d.features && d.features.length ? parsePhoton(d.features[0]) : null; })
+              .catch(function () { return null; });
+          })
+          .then(function (parsed) {
+            if (isManual) {
+              if (parsed) {
+                state.settings.manTitle = parsed.title;
+                state.settings.manAddr = parsed.addr;
+                el.manTitle.value = parsed.title;
+                el.manAddr.value = parsed.addr;
+                saveSettings();
+              }
+              return;
+            }
+            if (parsed) {
+              state.gps.title = parsed.title;
+              state.gps.address = parsed.addr;
+            } else if (state.gps.lastLat === null) {
+              state.gps.title = 'GPS Coordinates Locked';
+              state.gps.address = 'Offline — location name unavailable';
+            }
+          });
+      }
+
+      function fetchWeather(lat, lon, isManual) {
+        if (!isManual) {
+          state.wx.status = 'loading';
+          updateHUD();
+        }
+        var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + encodeURIComponent(lat) +
+                  '&longitude=' + encodeURIComponent(lon) +
+                  '&current=temperature_2m,relative_humidity_2m,weather_code,surface_pressure,wind_speed_10m,wind_direction_10m&wind_speed_unit=ms';
+
+        return fetchWithTimeout(url, 6000)
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (data) {
+            if (!data || !data.current) throw new Error('No weather data');
+            var cur = data.current;
+            var cond = WMO_CODES[cur.weather_code] || 'Clear';
+
+            if (isManual) {
+              if (typeof data.elevation === 'number' && !el.manAlt.value) {
+                state.settings.manAlt = String(Math.round(data.elevation));
+                el.manAlt.value = state.settings.manAlt;
+              }
+              state.settings.manWxCond = cond;
+              state.settings.manTemp = cur.temperature_2m != null ? String(cur.temperature_2m) : '';
+              state.settings.manRh = cur.relative_humidity_2m != null ? String(cur.relative_humidity_2m) : '';
+              state.settings.manWindMs = cur.wind_speed_10m != null ? String(cur.wind_speed_10m) : '';
+              state.settings.manWindDir = cur.wind_direction_10m != null ? String(cur.wind_direction_10m) : '';
+              state.settings.manPressure = cur.surface_pressure != null ? String(cur.surface_pressure) : '';
+              el.manWxCond.value = state.settings.manWxCond;
+              el.manTemp.value = state.settings.manTemp;
+              el.manRh.value = state.settings.manRh;
+              el.manWindMs.value = state.settings.manWindMs;
+              el.manWindDir.value = state.settings.manWindDir;
+              el.manPressure.value = state.settings.manPressure;
+              saveSettings();
+              return;
+            }
+
+            state.wx.status = 'ready';
+            state.wx.cond = cond;
+            state.wx.tempC = typeof cur.temperature_2m === 'number' ? cur.temperature_2m : null;
+            state.wx.rh = typeof cur.relative_humidity_2m === 'number' ? cur.relative_humidity_2m : null;
+            state.wx.windMs = typeof cur.wind_speed_10m === 'number' ? cur.wind_speed_10m : null;
+            state.wx.windDir = typeof cur.wind_direction_10m === 'number' ? cur.wind_direction_10m : null;
+            state.wx.pressure = typeof cur.surface_pressure === 'number' ? cur.surface_pressure : null;
+            state.wx.demElev = typeof data.elevation === 'number' ? data.elevation : null;
+          })
+          .catch(function () {
+            if (!isManual) state.wx.status = 'error';
+          });
+      }
+
+      /* ---------------------------------------------------------------------
+       * 9. CORS-SAFE MINI-MAP (fetch -> blob -> ObjectURL + RADAR FALLBACK)
+       * ------------------------------------------------------------------- */
+      function drawRadarFallback(ctx, lat, lon) {
+        ctx.clearRect(0, 0, 256, 256);
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, 0, 256, 256);
+
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.16)';
+        ctx.lineWidth = 1;
+        for (var i = 32; i < 256; i += 32) {
+          ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 256); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(256, i); ctx.stroke();
+        }
+
+        ctx.strokeStyle = 'rgba(16, 185, 129, 0.38)';
+        ctx.lineWidth = 1.5;
+        [44, 88].forEach(function (r) {
+          ctx.beginPath(); ctx.arc(128, 128, r, 0, Math.PI * 2); ctx.stroke();
+        });
+
+        ctx.strokeStyle = 'rgba(16, 185, 129, 0.45)';
+        ctx.beginPath();
+        ctx.moveTo(128, 18); ctx.lineTo(128, 238);
+        ctx.moveTo(18, 128); ctx.lineTo(238, 128);
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.9)';
+        ctx.font = '700 13px ui-monospace, Menlo, monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('N', 128, 11);
+        ctx.fillText('S', 128, 245);
+        ctx.fillText('W', 11, 128);
+        ctx.fillText('E', 245, 128);
+
+        if (lat !== null && lon !== null && !isNaN(lat) && !isNaN(lon)) {
+          ctx.fillStyle = 'rgba(9, 13, 20, 0.85)';
+          ctx.fillRect(24, 212, 208, 22);
+          ctx.fillStyle = '#6ee7b7';
+          ctx.font = '600 11px ui-monospace, Menlo, monospace';
+          ctx.fillText(lat.toFixed(3) + ', ' + lon.toFixed(3), 128, 223);
+        }
+
+        drawCrosshairPin(ctx, 128, 128);
+      }
+
+      function drawCrosshairPin(ctx, cx, cy) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.24)';
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.9)';
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+        ctx.fillStyle = '#ef4444';
+        ctx.fill();
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = '#ffffff';
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function syncLiveMiniMap() {
+        var liveCtx = el.liveMiniMapCanvas.getContext('2d');
+        liveCtx.clearRect(0, 0, 256, 256);
+        liveCtx.drawImage(state.miniMap.canvas, 0, 0);
+      }
+
+      function loadMiniMap(lat, lon) {
+        var ctx = state.miniMap.canvas.getContext('2d');
+        if (lat === null || lon === null || isNaN(lat) || isNaN(lon)) {
+          state.miniMap.isOsm = false;
+          drawRadarFallback(ctx, null, null);
+          syncLiveMiniMap();
+          return Promise.resolve();
+        }
+
+        if (state.miniMap.isOsm && state.miniMap.lat !== null && haversineM(state.miniMap.lat, state.miniMap.lon, lat, lon) < 15) {
+          return Promise.resolve();
+        }
+
+        var zoom = 16;
+        var n = Math.pow(2, zoom);
+        var xExact = ((lon + 180) / 360) * n;
+        var latRad = (lat * Math.PI) / 180;
+        var yExact = ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n;
+
+        var tileX = Math.floor(xExact);
+        var tileY = Math.floor(yExact);
+        var fracX = (xExact - tileX) * 256;
+        var fracY = (yExact - tileY) * 256;
+
+        var dxs = fracX < 128 ? [-1, 0] : [0, 1];
+        var dys = fracY < 128 ? [-1, 0] : [0, 1];
+        var jobs = [];
+
+        dxs.forEach(function (dx) {
+          dys.forEach(function (dy) {
+            var tx = ((tileX + dx) % n + n) % n;
+            var ty = Math.max(0, Math.min(n - 1, tileY + dy));
+            var drawX = 128 - fracX + dx * 256;
+            var drawY = 128 - fracY + dy * 256;
+            var url = 'https://tile.openstreetmap.org/' + zoom + '/' + tx + '/' + ty + '.png';
+
+            var p = fetchWithTimeout(url, 4000)
+              .then(function (res) { return res.ok ? res.blob() : null; })
+              .then(function (blob) {
+                if (!blob) return null;
+                return new Promise(function (resolve) {
+                  var objUrl = URL.createObjectURL(blob);
+                  var img = new Image();
+                  img.onload = function () { resolve({ img: img, objUrl: objUrl, x: drawX, y: drawY }); };
+                  img.onerror = function () { URL.revokeObjectURL(objUrl); resolve(null); };
+                  img.src = objUrl;
+                });
+              })
+              .catch(function () { return null; });
+
+            jobs.push(p);
+          });
+        });
+
+        return Promise.all(jobs).then(function (tiles) {
+          var valid = tiles.filter(Boolean);
+          if (!valid.length) {
+            state.miniMap.isOsm = false;
+            drawRadarFallback(ctx, lat, lon);
+            syncLiveMiniMap();
+            return;
+          }
+          ctx.clearRect(0, 0, 256, 256);
+          ctx.fillStyle = '#0f172a';
+          ctx.fillRect(0, 0, 256, 256);
+          valid.forEach(function (t) {
+            ctx.drawImage(t.img, t.x, t.y, 256, 256);
+            URL.revokeObjectURL(t.objUrl);
+          });
+          drawCrosshairPin(ctx, 128, 128);
+          state.miniMap.isOsm = true;
+          state.miniMap.lat = lat;
+          state.miniMap.lon = lon;
+          syncLiveMiniMap();
+        });
+      }
+
+      /* ---------------------------------------------------------------------
+       * 10. HUD & LIVE WYSIWYG STAMP UPDATERS
+       * ------------------------------------------------------------------- */
+      function updateHUD() {
+        el.gpsDot.className = 'dot';
+        if (state.settings.manualMode) {
+          el.gpsPillText.textContent = 'MANUAL';
+        } else if (state.gps.status === 'locked' && state.gps.accuracy !== null) {
+          el.gpsDot.classList.add(state.gps.accuracy <= 25 ? 'ok' : 'pulse');
+          el.gpsPillText.textContent = '±' + Math.round(state.gps.accuracy) + 'm';
+        } else if (state.gps.status === 'error') {
+          el.gpsDot.classList.add('err');
+          el.gpsPillText.textContent = 'No GPS';
+        } else {
+          el.gpsDot.classList.add('pulse');
+          el.gpsPillText.textContent = 'GPS...';
+        }
+
+        el.wxDot.className = 'dot';
+        var d = getTelemetry();
+        if (d.tempC !== null) {
+          el.wxDot.classList.add('wx');
+          var t = d.imp ? Math.round((d.tempC * 9) / 5 + 32) + '°F' : Math.round(d.tempC) + '°C';
+          var rh = d.rh !== null ? ' ' + Math.round(d.rh) + '%' : '';
+          el.wxPillText.textContent = t + rh;
+        } else if (state.wx.status === 'loading') {
+          el.wxDot.classList.add('wx', 'pulse');
+          el.wxPillText.textContent = 'WX...';
+        } else {
+          el.wxDot.classList.add('idle');
+          el.wxPillText.textContent = 'WX --';
+        }
+      }
+
+      function updateLiveStamp() {
+        var s = state.settings;
+        var st = buildStampData(new Date());
+
+        if (!st.hasText && !s.showMiniMap) {
+          el.liveStampWrap.classList.add('hidden');
+          return;
+        }
+        el.liveStampWrap.classList.remove('hidden');
+
+        el.liveStampWrap.className = 'stamp-wrap' +
+          (s.position === 'top' ? ' pos-top' : '') +
+          (s.style === 'bar' ? ' style-bar' : '') +
+          (s.style === 'minimal' ? ' style-minimal' : '');
+
+        el.liveMiniMapBox.classList.toggle('hidden', !s.showMiniMap);
+        el.liveStampText.classList.toggle('hidden', !st.hasText);
+
+        var hasRes = Boolean(st.sample || st.project || st.researcher);
+        el.stResearchRow.classList.toggle('hidden', !hasRes);
+        el.stSampleBadge.classList.toggle('hidden', !st.sample);
+        el.stSampleBadge.textContent = st.sample;
+        el.stProject.classList.toggle('hidden', !st.project);
+        el.stProject.textContent = st.project;
+        el.stResearcher.classList.toggle('hidden', !st.researcher);
+        el.stResearcher.textContent = st.researcher ? '• ' + st.researcher : '';
+
+        el.stTitle.classList.toggle('hidden', !st.title);
+        el.stTitle.textContent = st.title;
+        el.stAddr.classList.toggle('hidden', !st.addr);
+        el.stAddr.textContent = st.addr;
+        el.stTelemetry.classList.toggle('hidden', !st.telemetryLine);
+        el.stTelemetry.textContent = st.telemetryLine;
+        el.stWeather.classList.toggle('hidden', !st.weatherLine);
+        el.stWeather.textContent = st.weatherLine;
+        el.stTime.classList.toggle('hidden', !st.timeStr);
+        el.stTime.textContent = st.timeStr;
+        el.stNotes.classList.toggle('hidden', !st.notes);
+        el.stNotes.textContent = st.notes ? 'Note: ' + st.notes : '';
+
+        el.quickNotesLabel.textContent = s.notes.trim() ? 'Note*' : 'Note';
+      }
+
+      /* ---------------------------------------------------------------------
+       * 11. iOS-SAFE HIGH-RES CANVAS CAPTURE & STAMP RENDERER
+       * ------------------------------------------------------------------- */
+      function computeSafeDimensions(sw, sh) {
+        var MAX_EDGE = 2400;
+        var MAX_PIXELS = 6000000; // Well under Safari's 16.7M pixel limit
+        var scale = 1;
+        if (Math.max(sw, sh) > MAX_EDGE) {
+          scale = Math.min(scale, MAX_EDGE / Math.max(sw, sh));
+        }
+        if (sw * sh * scale * scale > MAX_PIXELS) {
+          scale = Math.min(scale, Math.sqrt(MAX_PIXELS / (sw * sh)));
+        }
+        return {
+          w: Math.max(1, Math.round(sw * scale)),
+          h: Math.max(1, Math.round(sh * scale)),
+        };
+      }
+
+      function stampSourceAndExport(sourceEl, srcW, srcH, isMirrored) {
+        if (!srcW || !srcH) {
+          toast('Image not ready yet', 'warn');
+          return;
+        }
+
+        // Shutter flash feedback
+        el.shutterFlash.classList.add('active');
+        setTimeout(function () { el.shutterFlash.classList.remove('active'); }, 120);
+
+        // Aspect ratio center crop
+        var targetRatio = ASPECTS[state.aspectIdx].ratio;
+        var sx = 0, sy = 0, sw = srcW, sh = srcH;
+        if (targetRatio) {
+          var srcRatio = srcW / srcH;
+          if (srcRatio > targetRatio) {
+            sw = Math.round(srcH * targetRatio);
+            sx = Math.round((srcW - sw) / 2);
+          } else if (srcRatio < targetRatio) {
+            sh = Math.round(srcW / targetRatio);
+            sy = Math.round((srcH - sh) / 2);
+          }
+        }
+
+        var dims = computeSafeDimensions(sw, sh);
+        var canvas = document.createElement('canvas');
+        canvas.width = dims.w;
+        canvas.height = dims.h;
+        var ctx = canvas.getContext('2d');
+
+        ctx.save();
+        if (isMirrored) {
+          ctx.translate(dims.w, 0);
+          ctx.scale(-1, 1);
+        }
+        ctx.drawImage(sourceEl, sx, sy, sw, sh, 0, 0, dims.w, dims.h);
+        ctx.restore();
+
+        var now = new Date();
+        var stamp = buildStampData(now);
+        var fnameBase = buildFilename(now);
+
+        drawStampOnCanvas(ctx, dims.w, dims.h, stamp);
+
+        // Generate JPEG & PNG blobs safely, then release canvas memory for iOS Safari
+        canvas.toBlob(function (jpgBlob) {
+          if (!jpgBlob) {
+            canvas.width = 1; canvas.height = 1;
+            toast('Could not encode photo', 'err');
+            return;
+          }
+          canvas.toBlob(function (pngBlob) {
+            // Release temporary canvas immediately to prevent iOS memory exhaustion
+            canvas.width = 1;
+            canvas.height = 1;
+
+            var d = stamp.raw;
+            var rec = {
+              id: Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+              fnameBase: fnameBase,
+              w: dims.w,
+              h: dims.h,
+              jpgBlob: jpgBlob,
+              pngBlob: pngBlob || jpgBlob,
+              jpgUrl: URL.createObjectURL(jpgBlob),
+              pngUrl: URL.createObjectURL(pngBlob || jpgBlob),
+              csv: {
+                sample: state.settings.sampleName.trim(),
+                project: state.settings.projectName.trim(),
+                researcher: state.settings.researcher.trim(),
+                time: now.toISOString(),
+                lat: d.lat !== null ? d.lat.toFixed(6) : '',
+                lon: d.lon !== null ? d.lon.toFixed(6) : '',
+                altM: d.altM !== null ? Math.round(d.altM) : '',
+                altSrc: d.altSrc || '',
+                accM: d.accM !== null ? Math.round(d.accM) : '',
+                hdg: d.hdg !== null ? Math.round(((d.hdg % 360) + 360) % 360) : '',
+                loc: [d.title, d.addr].filter(Boolean).join(' | '),
+                wx: d.wxCond || '',
+                tempC: d.tempC !== null ? d.tempC.toFixed(1) : '',
+                rh: d.rh !== null ? Math.round(d.rh) : '',
+                windMs: d.windMs !== null ? d.windMs.toFixed(1) : '',
+                windDir: d.windDir !== null ? Math.round(d.windDir) + '° ' + degToCardinal(d.windDir) : '',
+                pressure: d.pressure !== null ? Math.round(d.pressure) : '',
+                notes: state.settings.notes.trim(),
+              },
+            };
+
+            state.photos.unshift(rec);
+            renderSessionStrip();
+            openPreviewModal(rec);
+
+            if (state.settings.autoInc && state.settings.sampleName.trim()) {
+              var next = incrementSample(state.settings.sampleName);
+              state.settings.sampleName = next;
+              el.quickSampleInput.value = next;
+              saveSettings();
+              updateLiveStamp();
+            }
+          }, 'image/png');
+        }, 'image/jpeg', 0.92);
+      }
+
+      function captureFromViewfinder() {
+        if (state.uploadedImg) {
+          stampSourceAndExport(state.uploadedImg, state.uploadedImg.naturalWidth, state.uploadedImg.naturalHeight, false);
+          return;
+        }
+        if (!state.stream || !el.video.videoWidth) {
+          toast('Tap "Native Cam" or "Library" to stamp a photo', 'warn');
+          return;
+        }
+        stampSourceAndExport(el.video, el.video.videoWidth, el.video.videoHeight, state.facingMode === 'user');
+      }
+
+      function drawRoundedRect(ctx, x, y, w, h, r) {
+        var rr = Math.min(r, w / 2, h / 2);
+        ctx.beginPath();
+        ctx.moveTo(x + rr, y);
+        ctx.arcTo(x + w, y, x + w, y + h, rr);
+        ctx.arcTo(x + w, y + h, x, y + h, rr);
+        ctx.arcTo(x, y + h, x, y, rr);
+        ctx.arcTo(x, y, x + w, y, rr);
+        ctx.closePath();
+      }
+
+      function wrapLines(ctx, text, maxW, maxLines) {
+        if (!text) return [];
+        var words = text.split(/\s+/);
+        var out = [];
+        var cur = '';
+        for (var i = 0; i < words.length; i++) {
+          var test = cur ? cur + ' ' + words[i] : words[i];
+          if (ctx.measureText(test).width <= maxW) {
+            cur = test;
+          } else {
+            if (cur) out.push(cur);
+            cur = words[i];
+            if (out.length === maxLines - 1) break;
+          }
+        }
+        if (cur) out.push(cur);
+        if (out.length) {
+          var last = out[out.length - 1];
+          while (last.length > 3 && ctx.measureText(last).width > maxW) {
+            last = last.slice(0, -2) + '…';
+          }
+          out[out.length - 1] = last;
+        }
+        return out.slice(0, maxLines);
+      }
+
+      function drawStampOnCanvas(ctx, cw, ch, st) {
+        var s = state.settings;
+        if (!st.hasText && !s.showMiniMap) return;
+
+        var scale = Math.max(0.55, Math.min(cw, ch) / 760);
+        var margin = s.style === 'bar' ? 0 : Math.round(20 * scale);
+        var padX = Math.round(18 * scale);
+        var padY = Math.round(14 * scale);
+        var radius = s.style === 'glass' ? Math.round(16 * scale) : 0;
+
+        var mapSz = s.showMiniMap ? Math.round(118 * scale) : 0;
+        var mapGap = s.showMiniMap && st.hasText ? Math.round(16 * scale) : 0;
+
+        var cardW = cw - margin * 2;
+        var textMaxW = Math.max(120, cardW - padX * 2 - mapSz - mapGap);
+
+        var titleSz = Math.round(20 * scale);
+        var bodySz = Math.round(14 * scale);
+        var monoSz = Math.round(13 * scale);
+        var lineGap = Math.round(5 * scale);
+
+        var lines = [];
+        var resParts = [];
+        if (st.sample) resParts.push('[' + st.sample + ']');
+        if (st.project) resParts.push(st.project);
+        if (st.researcher) resParts.push(st.researcher);
+
+        if (resParts.length) {
+          ctx.font = '700 ' + bodySz + 'px ui-monospace, Menlo, monospace';
+          wrapLines(ctx, resParts.join('  •  '), textMaxW, 2).forEach(function (t) {
+            lines.push({ text: t, font: ctx.font, color: '#6ee7b7', sz: bodySz });
+          });
+        }
+        if (st.title) {
+          ctx.font = '700 ' + titleSz + 'px -apple-system, BlinkMacSystemFont, sans-serif';
+          wrapLines(ctx, st.title, textMaxW, 2).forEach(function (t) {
+            lines.push({ text: t, font: ctx.font, color: '#ffffff', sz: titleSz });
+          });
+        }
+        if (st.addr) {
+          ctx.font = '400 ' + bodySz + 'px -apple-system, BlinkMacSystemFont, sans-serif';
+          wrapLines(ctx, st.addr, textMaxW, 2).forEach(function (t) {
+            lines.push({ text: t, font: ctx.font, color: 'rgba(226,232,240,0.95)', sz: bodySz });
+          });
+        }
+        if (st.telemetryLine) {
+          ctx.font = '500 ' + monoSz + 'px ui-monospace, Menlo, monospace';
+          wrapLines(ctx, st.telemetryLine, textMaxW, 2).forEach(function (t) {
+            lines.push({ text: t, font: ctx.font, color: '#f1f5f9', sz: monoSz });
+          });
+        }
+        if (st.weatherLine) {
+          ctx.font = '500 ' + monoSz + 'px ui-monospace, Menlo, monospace';
+          wrapLines(ctx, st.weatherLine, textMaxW, 2).forEach(function (t) {
+            lines.push({ text: t, font: ctx.font, color: '#a5f3fc', sz: monoSz });
+          });
+        }
+        if (st.timeStr) {
+          ctx.font = '500 ' + monoSz + 'px ui-monospace, Menlo, monospace';
+          wrapLines(ctx, st.timeStr, textMaxW, 1).forEach(function (t) {
+            lines.push({ text: t, font: ctx.font, color: '#cbd5e1', sz: monoSz });
+          });
+        }
+        if (st.notes) {
+          ctx.font = 'italic 500 ' + bodySz + 'px -apple-system, BlinkMacSystemFont, sans-serif';
+          wrapLines(ctx, 'Note: ' + st.notes, textMaxW, 2).forEach(function (t) {
+            lines.push({ text: t, font: ctx.font, color: '#fde68a', sz: bodySz });
+          });
+        }
+
+        var textH = 0;
+        lines.forEach(function (l, i) {
+          textH += l.sz * 1.26 + (i < lines.length - 1 ? lineGap : 0);
+        });
+
+        var cardH = Math.min(ch - margin * 2, Math.max(textH, mapSz) + padY * 2);
+        var cardX = margin;
+        var cardY = s.position === 'top' ? margin : ch - margin - cardH;
+
+        ctx.save();
+        if (s.style === 'glass') {
+          drawRoundedRect(ctx, cardX, cardY, cardW, cardH, radius);
+          ctx.fillStyle = 'rgba(6, 10, 18, 0.72)';
+          ctx.fill();
+          ctx.lineWidth = Math.max(1, 1.4 * scale);
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+          ctx.stroke();
+        } else if (s.style === 'bar') {
+          ctx.fillStyle = 'rgba(6, 10, 18, 0.8)';
+          ctx.fillRect(cardX, cardY, cardW, cardH);
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+          var bh = Math.max(1, 1.5 * scale);
+          ctx.fillRect(cardX, s.position === 'top' ? cardY + cardH - bh : cardY, cardW, bh);
+        }
+
+        if (s.showMiniMap) {
+          var mx = cardX + padX;
+          var my = cardY + (cardH - mapSz) / 2;
+          var mr = Math.round(11 * scale);
+          ctx.save();
+          drawRoundedRect(ctx, mx, my, mapSz, mapSz, mr);
+          ctx.clip();
+          ctx.drawImage(state.miniMap.canvas, mx, my, mapSz, mapSz);
+          ctx.restore();
+
+          ctx.save();
+          drawRoundedRect(ctx, mx, my, mapSz, mapSz, mr);
+          ctx.lineWidth = Math.max(1.5, 2 * scale);
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        if (lines.length) {
+          var tx = cardX + padX + mapSz + mapGap;
+          var ty = cardY + (cardH - textH) / 2;
+          ctx.textBaseline = 'top';
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+          ctx.shadowBlur = Math.round((s.style === 'minimal' ? 8 : 4) * scale);
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = Math.round(1.4 * scale);
+          lines.forEach(function (l) {
+            ctx.font = l.font;
+            ctx.fillStyle = l.color;
+            ctx.fillText(l.text, tx, ty);
+            ty += l.sz * 1.26 + lineGap;
+          });
+        }
+        ctx.restore();
+      }
+
+      /* ---------------------------------------------------------------------
+       * 12. SESSION GALLERY, PREVIEW MODAL & CSV LOG EXPORT
+       * ------------------------------------------------------------------- */
+      function renderSessionStrip() {
+        if (!state.photos.length) {
+          el.sessionStrip.classList.add('hidden');
+          return;
+        }
+        el.sessionStrip.classList.remove('hidden');
+        el.csvBtnText.textContent = 'CSV (' + state.photos.length + ')';
+        el.sessionThumbs.innerHTML = '';
+
+        state.photos.forEach(function (p) {
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'thumb-btn';
+          var img = document.createElement('img');
+          img.src = p.jpgUrl;
+          img.alt = p.fnameBase;
+          b.appendChild(img);
+          b.addEventListener('click', function () { openPreviewModal(p); });
+          el.sessionThumbs.appendChild(b);
+        });
+      }
+
+      function openPreviewModal(photo) {
+        state.activePhoto = photo;
+        el.previewFilename.textContent = photo.fnameBase + '.jpg';
+        el.previewDims.textContent = photo.w + ' × ' + photo.h + ' px';
+        el.capturedImg.src = photo.jpgUrl;
+        el.previewModal.classList.remove('hidden');
+      }
+
+      function downloadUrl(url, filename) {
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        toast('Saved ' + filename, 'ok');
+      }
+
+      function shareActivePhoto() {
+        var p = state.activePhoto;
+        if (!p) return;
+        try {
+          if (navigator.share && typeof File !== 'undefined') {
+            var file = new File([p.jpgBlob], p.fnameBase + '.jpg', { type: 'image/jpeg' });
+            if (!navigator.canShare || navigator.canShare({ files: [file] })) {
+              navigator.share({ files: [file], title: p.fnameBase })
+                .catch(function (err) {
+                  if (err && err.name !== 'AbortError') {
+                    downloadUrl(p.jpgUrl, p.fnameBase + '.jpg');
+                  }
+                });
+              return;
+            }
+          }
+        } catch (e) {}
+        downloadUrl(p.jpgUrl, p.fnameBase + '.jpg');
+      }
+
+      function exportCsv() {
+        if (!state.photos.length) {
+          toast('Capture a sample photo first', 'warn');
+          return;
+        }
+        var headers = [
+          'Filename', 'Sample ID', 'Project', 'Researcher', 'Timestamp (ISO)',
+          'Latitude', 'Longitude', 'Altitude (m)', 'Alt Source', 'Accuracy (m)',
+          'Heading (deg)', 'Location', 'Weather', 'Temp (C)', 'RH (%)',
+          'Wind (m/s)', 'Wind Dir', 'Pressure (hPa)', 'Notes',
+        ];
+        var esc = function (v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
+        var rows = state.photos.slice().reverse().map(function (p) {
+          var c = p.csv;
+          return [
+            p.fnameBase + '.jpg', c.sample, c.project, c.researcher, c.time,
+            c.lat, c.lon, c.altM, c.altSrc, c.accM, c.hdg, c.loc,
+            c.wx, c.tempC, c.rh, c.windMs, c.windDir, c.pressure, c.notes,
+          ].map(esc).join(',');
+        });
+        var csv = '\uFEFF' + [headers.map(esc).join(',')].concat(rows).join('\r\n');
+        var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        var fname = 'Field_Samples_' + buildFilename(new Date()).replace(/^.*?_/, '') + '.csv';
+
+        // Try iOS Share Sheet for CSV if supported, else download
+        try {
+          if (navigator.share && typeof File !== 'undefined') {
+            var f = new File([blob], fname, { type: 'text/csv' });
+            if (navigator.canShare && navigator.canShare({ files: [f] })) {
+              navigator.share({ files: [f], title: fname }).catch(function () {});
+              return;
+            }
+          }
+        } catch (e) {}
+
+        var url = URL.createObjectURL(blob);
+        downloadUrl(url, fname);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+      }
+
+      /* ---------------------------------------------------------------------
+       * 13. FILE INPUT HANDLERS (NATIVE iPHONE CAMERA & LIBRARY)
+       * ------------------------------------------------------------------- */
+      function handleFilePicked(file, autoStampImmediately) {
+        if (!file) return;
+        var objUrl = URL.createObjectURL(file);
+        var img = new Image();
+        img.onload = function () {
+          URL.revokeObjectURL(objUrl);
+          if (autoStampImmediately) {
+            stampSourceAndExport(img, img.naturalWidth, img.naturalHeight, false);
+          } else {
+            state.uploadedImg = img;
+            el.uploadedImg.src = img.src;
+            // Keep a blob URL for display in viewfinder
+            var displayUrl = URL.createObjectURL(file);
+            el.uploadedImg.src = displayUrl;
+            el.uploadedImg.classList.remove('hidden');
+            el.video.classList.add('hidden');
+            el.fallbackCard.classList.add('hidden');
+            el.tapPlayOverlay.classList.add('hidden');
+            el.photoModeBar.classList.remove('hidden');
+            toast('Photo loaded — tap Shutter or Stamp Now', 'ok');
+          }
+        };
+        img.onerror = function () {
+          URL.revokeObjectURL(objUrl);
+          toast('Could not read selected image', 'err');
+        };
+        img.src = objUrl;
+      }
+
+      function exitPhotoMode() {
+        state.uploadedImg = null;
+        el.uploadedImg.classList.add('hidden');
+        el.uploadedImg.src = '';
+        el.photoModeBar.classList.add('hidden');
+        el.video.classList.remove('hidden');
+        if (!state.stream) startCamera();
+      }
+
+      /* ---------------------------------------------------------------------
+       * 14. SETTINGS SYNC, PRESETS & EVENT WIRING
+       * ------------------------------------------------------------------- */
+      function syncControls() {
+        var s = state.settings;
+        document.querySelectorAll('.style-opt').forEach(function (b) {
+          b.classList.toggle('active', b.dataset.style === s.style);
+        });
+        document.querySelectorAll('.pos-opt').forEach(function (b) {
+          b.classList.toggle('active', b.dataset.pos === s.position);
+        });
+
+        el.optUnits.value = s.units;
+        el.optCoords.value = s.coordFormat;
+        el.optTime.value = s.timeFormat;
+
+        el.quickSampleInput.value = s.sampleName;
+        el.quickAutoInc.checked = s.autoInc;
+        el.quickNotesInput.value = s.notes;
+
+        el.inpProject.value = s.projectName;
+        el.inpResearcher.value = s.researcher;
+        el.inpNotes.value = s.notes;
+
+        el.togMiniMap.checked = s.showMiniMap;
+        el.togSample.checked = s.showSample;
+        el.togProject.checked = s.showProject;
+        el.togResearcher.checked = s.showResearcher;
+        el.togNotes.checked = s.showNotes;
+        el.togAddress.checked = s.showAddress;
+        el.togCoords.checked = s.showCoords;
+        el.togAltitude.checked = s.showAltitude;
+        el.togAccuracy.checked = s.showAccuracy;
+        el.togHeading.checked = s.showHeading;
+        el.togTime.checked = s.showTime;
+        el.togWxCond.checked = s.showWxCond;
+        el.togTemp.checked = s.showTemp;
+        el.togHumidity.checked = s.showHumidity;
+        el.togWind.checked = s.showWind;
+        el.togPressure.checked = s.showPressure;
+
+        el.optManualMode.checked = s.manualMode;
+        el.manualBox.classList.toggle('hidden', !s.manualMode);
+        el.manLat.value = s.manLat;
+        el.manLon.value = s.manLon;
+        el.manAlt.value = s.manAlt;
+        el.manTitle.value = s.manTitle;
+        el.manAddr.value = s.manAddr;
+        el.manWxCond.value = s.manWxCond;
+        el.manTemp.value = s.manTemp;
+        el.manRh.value = s.manRh;
+        el.manWindMs.value = s.manWindMs;
+        el.manWindDir.value = s.manWindDir;
+        el.manPressure.value = s.manPressure;
+      }
+
+      function applyPreset(name) {
+        var s = state.settings;
+        var setAll = function (val) {
+          s.showMiniMap = val; s.showSample = val; s.showProject = val; s.showResearcher = val;
+          s.showNotes = val; s.showAddress = val; s.showCoords = val; s.showAltitude = val;
+          s.showAccuracy = val; s.showHeading = val; s.showTime = val; s.showWxCond = val;
+          s.showTemp = val; s.showHumidity = val; s.showWind = val; s.showPressure = val;
+        };
+        if (name === 'all') {
+          setAll(true);
+          toast('All 16 stamp fields enabled', 'ok');
+        } else if (name === 'research') {
+          setAll(true);
+          s.style = 'glass';
+          s.showResearcher = false;
+          toast('Research Full preset applied', 'ok');
+        } else {
+          setAll(false);
+          s.style = 'minimal';
+          s.showSample = true;
+          s.showCoords = true;
+          s.showTime = true;
+          toast('Minimal preset applied');
+        }
+        saveSettings();
+        syncControls();
+        updateLiveStamp();
+      }
+
+      function bindEvents() {
+        var triggerRefresh = function () {
+          if (state.settings.manualMode) {
+            toast('Manual Mode active — edit in Stamp settings');
+            return;
+          }
+          if (state.gps.lat !== null && state.gps.lon !== null) {
+            toast('Refreshing GPS, address & weather...');
+            fetchAllTelemetry(state.gps.lat, state.gps.lon, false);
+          } else {
+            toast('Acquiring GPS fix...');
+            startGeolocation();
+          }
+        };
+
+        el.gpsPillBtn.addEventListener('click', triggerRefresh);
+        el.wxPillBtn.addEventListener('click', triggerRefresh);
+        el.refreshTelemetryBtn.addEventListener('click', triggerRefresh);
+        el.compassBtn.addEventListener('click', requestCompassPermission);
+
+        el.flipBtn.addEventListener('click', function () {
+          if (state.uploadedImg) exitPhotoMode();
+          state.facingMode = state.facingMode === 'environment' ? 'user' : 'environment';
+          startCamera();
+        });
+
+        // Quick Sample & Notes Bar
+        el.quickSampleInput.addEventListener('input', function (e) {
+          state.settings.sampleName = e.target.value;
+          saveSettings();
+          updateLiveStamp();
+        });
+        el.quickIncBtn.addEventListener('click', function () {
+          var next = incrementSample(state.settings.sampleName);
+          state.settings.sampleName = next;
+          el.quickSampleInput.value = next;
+          saveSettings();
+          updateLiveStamp();
+        });
+        el.quickAutoInc.addEventListener('change', function (e) {
+          state.settings.autoInc = e.target.checked;
+          saveSettings();
+        });
+        el.quickNotesBtn.addEventListener('click', function () {
+          el.quickNotesBar.classList.toggle('hidden');
+          if (!el.quickNotesBar.classList.contains('hidden')) el.quickNotesInput.focus();
+        });
+        el.closeQuickNotesBtn.addEventListener('click', function () {
+          el.quickNotesBar.classList.add('hidden');
+        });
+        el.quickNotesInput.addEventListener('input', function (e) {
+          state.settings.notes = e.target.value;
+          el.inpNotes.value = e.target.value;
+          saveSettings();
+          updateLiveStamp();
+        });
+
+        // Viewfinder buttons
+        el.tapPlayBtn.addEventListener('click', function () {
+          el.video.play().then(function () {
+            el.tapPlayOverlay.classList.add('hidden');
+          }).catch(function () {
+            toast('Tap Native Cam to capture', 'warn');
+          });
+        });
+        el.fbStartLiveBtn.addEventListener('click', startCamera);
+        el.fbNativeCamBtn.addEventListener('click', function () { el.nativeCamInput.click(); });
+        el.fbLibraryBtn.addEventListener('click', function () { el.libraryInput.click(); });
+        el.stampNowBtn.addEventListener('click', captureFromViewfinder);
+        el.exitPhotoModeBtn.addEventListener('click', exitPhotoMode);
+
+        // Bottom Controls
+        el.nativeCamBtn.addEventListener('click', function () { el.nativeCamInput.click(); });
+        el.libraryBtn.addEventListener('click', function () { el.libraryInput.click(); });
+        el.nativeCamInput.addEventListener('change', function (e) {
+          var f = e.target.files && e.target.files[0];
+          if (f) handleFilePicked(f, true);
+          el.nativeCamInput.value = '';
+        });
+        el.libraryInput.addEventListener('change', function (e) {
+          var f = e.target.files && e.target.files[0];
+          if (f) handleFilePicked(f, false);
+          el.libraryInput.value = '';
+        });
+
+        el.shutterBtn.addEventListener('click', captureFromViewfinder);
+        el.aspectBtn.addEventListener('click', function () {
+          state.aspectIdx = (state.aspectIdx + 1) % ASPECTS.length;
+          applyAspect();
+        });
+        el.exportCsvBtn.addEventListener('click', exportCsv);
+
+        // Settings Drawer
+        el.openStampBtn.addEventListener('click', function () {
+          syncControls();
+          el.settingsModal.classList.remove('hidden');
+        });
+        var closeSettings = function () { el.settingsModal.classList.add('hidden'); };
+        el.closeSettingsBtn.addEventListener('click', closeSettings);
+        el.doneSettingsBtn.addEventListener('click', closeSettings);
+        el.settingsModal.addEventListener('click', function (e) {
+          if (e.target === el.settingsModal) closeSettings();
+        });
+
+        el.presetAllBtn.addEventListener('click', function () { applyPreset('all'); });
+        el.presetResearchBtn.addEventListener('click', function () { applyPreset('research'); });
+        el.presetMinimalBtn.addEventListener('click', function () { applyPreset('minimal'); });
+
+        document.querySelectorAll('.style-opt').forEach(function (b) {
+          b.addEventListener('click', function () {
+            state.settings.style = b.dataset.style;
+            saveSettings(); syncControls(); updateLiveStamp();
+          });
+        });
+        document.querySelectorAll('.pos-opt').forEach(function (b) {
+          b.addEventListener('click', function () {
+            state.settings.position = b.dataset.pos;
+            saveSettings(); syncControls(); updateLiveStamp();
+          });
+        });
+
+        el.optUnits.addEventListener('change', function (e) {
+          state.settings.units = e.target.value; saveSettings(); updateHUD(); updateLiveStamp();
+        });
+        el.optCoords.addEventListener('change', function (e) {
+          state.settings.coordFormat = e.target.value; saveSettings(); updateLiveStamp();
+        });
+        el.optTime.addEventListener('change', function (e) {
+          state.settings.timeFormat = e.target.value; saveSettings(); updateLiveStamp();
+        });
+
+        el.inpProject.addEventListener('input', function (e) {
+          state.settings.projectName = e.target.value; saveSettings(); updateLiveStamp();
+        });
+        el.inpResearcher.addEventListener('input', function (e) {
+          state.settings.researcher = e.target.value; saveSettings(); updateLiveStamp();
+        });
+        el.inpNotes.addEventListener('input', function (e) {
+          state.settings.notes = e.target.value;
+          el.quickNotesInput.value = e.target.value;
+          saveSettings(); updateLiveStamp();
+        });
+
+        var toggles = [
+          ['togMiniMap', 'showMiniMap'],
+          ['togSample', 'showSample'],
+          ['togProject', 'showProject'],
+          ['togResearcher', 'showResearcher'],
+          ['togNotes', 'showNotes'],
+          ['togAddress', 'showAddress'],
+          ['togCoords', 'showCoords'],
+          ['togAltitude', 'showAltitude'],
+          ['togAccuracy', 'showAccuracy'],
+          ['togHeading', 'showHeading'],
+          ['togTime', 'showTime'],
+          ['togWxCond', 'showWxCond'],
+          ['togTemp', 'showTemp'],
+          ['togHumidity', 'showHumidity'],
+          ['togWind', 'showWind'],
+          ['togPressure', 'showPressure'],
+        ];
+        toggles.forEach(function (pair) {
+          el[pair[0]].addEventListener('change', function (e) {
+            state.settings[pair[1]] = e.target.checked;
+            saveSettings();
+            updateLiveStamp();
+          });
+        });
+
+        // Manual Mode
+        el.optManualMode.addEventListener('change', function (e) {
+          state.settings.manualMode = e.target.checked;
+          el.manualBox.classList.toggle('hidden', !e.target.checked);
+          if (e.target.checked && !state.settings.manLat && state.gps.lat !== null) {
+            state.settings.manLat = state.gps.lat.toFixed(6);
+            state.settings.manLon = state.gps.lon.toFixed(6);
+            state.settings.manTitle = state.gps.title;
+            state.settings.manAddr = state.gps.address;
+            if (state.gps.altitude !== null) state.settings.manAlt = String(Math.round(state.gps.altitude));
+            else if (state.wx.demElev !== null) state.settings.manAlt = String(Math.round(state.wx.demElev));
+            if (state.wx.cond) state.settings.manWxCond = state.wx.cond;
+            if (state.wx.tempC !== null) state.settings.manTemp = String(state.wx.tempC);
+            if (state.wx.rh !== null) state.settings.manRh = String(state.wx.rh);
+            if (state.wx.windMs !== null) state.settings.manWindMs = String(state.wx.windMs);
+            if (state.wx.windDir !== null) state.settings.manWindDir = String(state.wx.windDir);
+            if (state.wx.pressure !== null) state.settings.manPressure = String(state.wx.pressure);
+            syncControls();
+          } else if (!e.target.checked && state.gps.lat !== null) {
+            loadMiniMap(state.gps.lat, state.gps.lon);
+          }
+          saveSettings();
+          updateHUD();
+          updateLiveStamp();
+        });
+
+        [
+          'manLat', 'manLon', 'manAlt', 'manTitle', 'manAddr',
+          'manWxCond', 'manTemp', 'manRh', 'manWindMs', 'manWindDir', 'manPressure',
+        ].forEach(function (k) {
+          el[k].addEventListener('input', function (e) {
+            state.settings[k] = e.target.value;
+            saveSettings();
+            updateHUD();
+            updateLiveStamp();
+          });
+        });
+
+        el.fetchManualBtn.addEventListener('click', function () {
+          var lat = parseFloat(el.manLat.value);
+          var lon = parseFloat(el.manLon.value);
+          if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+            toast('Enter valid Lat (-90..90) and Lon (-180..180)', 'warn');
+            return;
+          }
+          toast('Fetching address, map & weather...');
+          fetchAllTelemetry(lat, lon, true).then(function () {
+            toast('Manual coordinates synced', 'ok');
+          });
+        });
+
+        // Preview Modal
+        var closePreview = function () { el.previewModal.classList.add('hidden'); };
+        el.closePreviewBtn.addEventListener('click', closePreview);
+        el.previewModal.addEventListener('click', function (e) {
+          if (e.target === el.previewModal) closePreview();
+        });
+        el.shareBtn.addEventListener('click', shareActivePhoto);
+        el.dlJpgBtn.addEventListener('click', function () {
+          if (state.activePhoto) downloadUrl(state.activePhoto.jpgUrl, state.activePhoto.fnameBase + '.jpg');
+        });
+        el.dlPngBtn.addEventListener('click', function () {
+          if (state.activePhoto) downloadUrl(state.activePhoto.pngUrl, state.activePhoto.fnameBase + '.png');
+        });
+      }
+
+      /* ---------------------------------------------------------------------
+       * 15. BOOTSTRAP
+       * ------------------------------------------------------------------- */
+      function init() {
+        drawRadarFallback(state.miniMap.canvas.getContext('2d'), null, null);
+        syncLiveMiniMap();
+        bindEvents();
+        syncControls();
+        applyAspect();
+        startCamera();
+        startGeolocation();
+        updateHUD();
+        updateLiveStamp();
+
+        // Auto-attach compass on non-iOS devices that do not require explicit permission
+        if (typeof DeviceOrientationEvent === 'undefined' || typeof DeviceOrientationEvent.requestPermission !== 'function') {
+          attachCompassListener();
+        }
+
+        // 1-second live clock & heading update
+        setInterval(function () {
+          if (state.settings.showTime || state.settings.showHeading) {
+            updateLiveStamp();
+          }
+        }, 1000);
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+      } else {
+        init();
+      }
+    })();
+  </script>
+</body>
+</html>
