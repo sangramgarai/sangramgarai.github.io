@@ -210,6 +210,7 @@ function uid(prefix = "id") {
 function emptyNotes() {
   return {
     taxon: "", accession: "", identity: "", coverage: "", evalue: "", marker: "", text: "",
+    blastHits: [], // Stores top 10 imported BLAST hits
     strain: "", isolate: "", isolationSource: "", host: "", geoLoc: "", collectionDate: "", collectedBy: "", voucher: ""
   };
 }
@@ -1093,38 +1094,55 @@ function suggestGroupNameMulti(samples) {
 }
 
 function autoGroupSamples() {
-  const ungrouped = state.order.filter(o => o.type === "sample").map(o => state.samples[o.id]).filter(Boolean);
+  const ungrouped = state.order
+    .filter(o => o.type === "sample")
+    .map(o => state.samples[o.id])
+    .filter(Boolean);
+
   for (const s of ungrouped) {
     const det = detectPrimerAndDirection(s.fileName);
-    if (det.dir) { s.direction = det.dir; s.detectedPrimer = det.primer; }
+    if (det.dir) {
+      s.direction = det.dir;
+      s.detectedPrimer = det.primer;
+    }
     s.gene = detectGeneFromFilename(s.fileName);
   }
 
-  const n = ungrouped.length, thresh = state.settings.simThreshold || 0.45;
-  const adj = Array.from({ length: n }, () => []);
-  for (let i = 0; i < n; i++) {
-    for (let j = i + 1; j < n; j++) {
-      if (computePairSimilarity(ungrouped[i], ungrouped[j]) >= thresh) { adj[i].push(j); adj[j].push(i); }
+  const thresh = state.settings.simThreshold || 0.45;
+  const pairs = [];
+
+  for (let i = 0; i < ungrouped.length; i++) {
+    for (let j = i + 1; j < ungrouped.length; j++) {
+      const a = ungrouped[i], b = ungrouped[j];
+      if (a.direction === b.direction) continue;
+      const score = computePairSimilarity(a, b);
+      if (score >= thresh) pairs.push({ a, b, score });
     }
   }
 
-  const visited = new Uint8Array(n);
+  pairs.sort((x, y) => y.score - x.score);
+
+  const used = new Set();
   let created = 0;
-  for (let i = 0; i < n; i++) {
-    if (visited[i] || adj[i].length === 0) continue;
-    const comp = [], stack = [i];
-    visited[i] = 1;
-    while (stack.length) {
-      const u = stack.pop();
-      comp.push(ungrouped[u]);
-      for (const v of adj[u]) if (!visited[v]) { visited[v] = 1; stack.push(v); }
-    }
-    comp.sort((a, b) => (a.direction === b.direction ? a.name.localeCompare(b.name) : (a.direction === "F" ? -1 : 1)));
-    createGroup(comp, suggestGroupNameMulti(comp), comp.find(s => s.gene)?.gene || "");
+  for (const p of pairs) {
+    if (used.has(p.a.id) || used.has(p.b.id)) continue;
+    used.add(p.a.id);
+    used.add(p.b.id);
+    const fwd = p.a.direction === "F" ? p.a : p.b;
+    const rev = p.a.direction === "R" ? p.a : p.b;
+    const gene = fwd.gene || rev.gene || "";
+    createGroup([fwd, rev], suggestGroupNameMulti([fwd, rev]), gene);
     created++;
   }
-  renderTable(); persistDB();
-  toast(created ? `Auto-grouped ${created} contig(s) from matching reads` : "No new matching reads met the similarity threshold", created ? "success" : "warn");
+
+  renderTable();
+  persistDB();
+  toast(
+    created
+      ? `Auto-grouped ${created} F/R pair(s)`
+      : "No new F/R pairs matched current threshold",
+    created ? "success" : "warn"
+  );
 }
 
 function createGroup(memberSamples, name, gene = "") {

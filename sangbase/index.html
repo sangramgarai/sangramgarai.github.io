@@ -384,6 +384,25 @@
             <div class="form-field full"><label>Free-Text Lab Notes (morphology, PCR remarks)</label><textarea
                 id="noteText" rows="3" placeholder="Colony morphology, PCR conditions, lab remarks..."></textarea></div>
           </div>
+          <div id="noteBlastHitsWrap" style="margin-top:12px;display:none;">
+          <label class="label-muted">Top Imported BLAST Hits (click "Use" to set as primary ID)</label>
+          <div class="table-wrap" style="max-height:170px;margin-top:5px;border:1px solid var(--border);border-radius:6px;">
+            <table class="sample-table" style="font-size:11px;">
+              <thead>
+                <tr>
+                  <th style="width:28px;">#</th>
+                  <th>Organism / Hit</th>
+                  <th>Accession</th>
+                  <th>ID%</th>
+                  <th>Cov%</th>
+                  <th>E-val / Bits</th>
+                  <th style="width:46px;"></th>
+                </tr>
+              </thead>
+              <tbody id="noteBlastHitsBody"></tbody>
+            </table>
+          </div>
+        </div>
         </div>
 
         <div id="notesTabGenbank" class="notes-tab-pane" style="display:none;">

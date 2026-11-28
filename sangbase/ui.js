@@ -1495,67 +1495,118 @@ function findItemByBlastQueryName(qDef) {
 
 async function importBlastResultsFile(file) {
   try {
-    const text = await file.text(), isXml = file.name.toLowerCase().endsWith(".xml") || text.trim().startsWith("<");
-    const parsedHits = isXml ? parseBlastXml(text) : parseBlastHitTable(text);
+    const text = await file.text();
+    const isXml = file.name.toLowerCase().endsWith(".xml") || text.trim().startsWith("<");
+    const parsed = isXml ? parseBlastXml(text) : parseBlastHitTable(text);
     let updated = 0, noHit = 0, unmatched = 0;
 
-    for (const r of parsedHits) {
+    for (const r of parsed) {
       const item = findItemByBlastQueryName(r.queryName);
       if (!item) { unmatched++; continue; }
       item.notes = { ...emptyNotes(), ...(item.notes || {}) };
-      if (r.noHit) { item.notes.taxon = "No significant hit"; noHit++; continue; }
-      item.notes.taxon = r.taxon || item.notes.taxon;
-      item.notes.accession = r.accession || item.notes.accession;
-      item.notes.identity = r.identity || item.notes.identity;
-      item.notes.coverage = r.coverage || item.notes.coverage;
-      item.notes.evalue = r.evalue || item.notes.evalue;
-      if (r.marker) item.notes.marker = r.marker;
+
+      if (!r.hits || !r.hits.length) {
+        item.notes.taxon = "No significant hit";
+        item.notes.blastHits = [];
+        noHit++;
+        continue;
+      }
+
+      // Keep top 10 hits
+      item.notes.blastHits = r.hits.slice(0, 10);
+
+      // Auto-fill primary fields from Hit #1
+      const top = item.notes.blastHits[0];
+      item.notes.taxon = top.taxon || item.notes.taxon;
+      item.notes.accession = top.accession || item.notes.accession;
+      item.notes.identity = top.identity || item.notes.identity;
+      item.notes.coverage = top.coverage || item.notes.coverage;
+      item.notes.evalue = top.evalue || item.notes.evalue;
+      if (top.marker) item.notes.marker = top.marker;
       updated++;
     }
+
     renderTable(); persistDB(); closeModal("batchModal");
-    toast(`BLAST Import: Updated ${updated} sample(s)${noHit ? `, ${noHit} no-hit` : ""}${unmatched ? `, ${unmatched} unmatched` : ""}.`, updated ? "success" : "warn");
-  } catch (err) { toast("Failed to parse BLAST file: " + err.message, "error"); }
+    toast(
+      `BLAST Import: Updated ${updated} sample(s) (up to 10 hits each)${noHit ? `, ${noHit} no-hit` : ""}${unmatched ? `, ${unmatched} unmatched` : ""}.`,
+      updated ? "success" : "warn"
+    );
+  } catch (err) {
+    toast("Failed to parse BLAST file: " + err.message, "error");
+  }
 }
 
 function parseBlastXml(xmlText) {
   const doc = new DOMParser().parseFromString(xmlText, "application/xml");
   if (doc.querySelector("parsererror")) throw new Error("Malformed XML file");
   const results = [];
+
   for (const iter of doc.querySelectorAll("Iteration, Search")) {
     const qDef = iter.querySelector("Iteration_query-def")?.textContent || iter.querySelector("query-title")?.textContent || iter.querySelector("query-id")?.textContent || "";
     const qLen = parseFloat(iter.querySelector("Iteration_query-len")?.textContent || iter.querySelector("query-len")?.textContent || "0");
-    const firstHit = iter.querySelector("Hit");
-    if (!firstHit) { results.push({ queryName: qDef, noHit: true }); continue; }
-    const hitDef = firstHit.querySelector("Hit_def")?.textContent || firstHit.querySelector("description > HitDescr > title")?.textContent || "";
-    const accession = firstHit.querySelector("Hit_accession")?.textContent || firstHit.querySelector("description > HitDescr > accession")?.textContent || "";
-    const hsp = firstHit.querySelector("Hsp");
-    let identity = "", coverage = "", evalue = "";
-    if (hsp) {
-      const idNum = parseFloat(hsp.querySelector("Hsp_identity, identity")?.textContent || "0");
-      const alnLen = parseFloat(hsp.querySelector("Hsp_align-len, align-len")?.textContent || "1");
-      const qFrom = parseFloat(hsp.querySelector("Hsp_query-from, query-from")?.textContent || "0");
-      const qTo = parseFloat(hsp.querySelector("Hsp_query-to, query-to")?.textContent || "0");
-      const ev = hsp.querySelector("Hsp_evalue, evalue")?.textContent || "";
-      const bits = hsp.querySelector("Hsp_bit-score, bit-score")?.textContent || "";
-      if (alnLen > 0) identity = ((idNum / alnLen) * 100).toFixed(2) + "%";
-      if (qLen > 0 && qTo >= qFrom) coverage = Math.round(Math.min(100, ((qTo - qFrom + 1) / qLen) * 100)) + "%";
-      evalue = ev ? (bits ? `${ev} / ${Math.round(parseFloat(bits))}` : ev) : "";
-    }
-    results.push({ queryName: qDef, taxon: extractTaxonFromDef(hitDef), accession, identity, coverage, evalue, marker: detectMarkerFromDef(hitDef) });
+    const hitNodes = Array.from(iter.querySelectorAll("Hit")).slice(0, 10);
+
+    const hits = hitNodes.map((hitNode, idx) => {
+      const hitDef = hitNode.querySelector("Hit_def")?.textContent || hitNode.querySelector("description > HitDescr > title")?.textContent || "";
+      const accession = hitNode.querySelector("Hit_accession")?.textContent || hitNode.querySelector("description > HitDescr > accession")?.textContent || "";
+      const hsp = hitNode.querySelector("Hsp");
+      let identity = "", coverage = "", evalue = "";
+
+      if (hsp) {
+        const idNum = parseFloat(hsp.querySelector("Hsp_identity, identity")?.textContent || "0");
+        const alnLen = parseFloat(hsp.querySelector("Hsp_align-len, align-len")?.textContent || "1");
+        const qFrom = parseFloat(hsp.querySelector("Hsp_query-from, query-from")?.textContent || "0");
+        const qTo = parseFloat(hsp.querySelector("Hsp_query-to, query-to")?.textContent || "0");
+        const ev = hsp.querySelector("Hsp_evalue, evalue")?.textContent || "";
+        const bits = hsp.querySelector("Hsp_bit-score, bit-score")?.textContent || "";
+        if (alnLen > 0) identity = ((idNum / alnLen) * 100).toFixed(2) + "%";
+        if (qLen > 0 && qTo >= qFrom) coverage = Math.round(Math.min(100, ((qTo - qFrom + 1) / qLen) * 100)) + "%";
+        evalue = ev ? (bits ? `${ev} / ${Math.round(parseFloat(bits))}` : ev) : "";
+      }
+
+      return {
+        rank: idx + 1,
+        taxon: extractTaxonFromDef(hitDef),
+        hitDef,
+        accession,
+        identity,
+        coverage,
+        evalue,
+        marker: detectMarkerFromDef(hitDef)
+      };
+    });
+
+    results.push({ queryName: qDef, hits });
   }
   return results;
 }
 
 function parseBlastHitTable(csvText) {
-  const lines = csvText.split(/\r?\n/).filter(l => l.trim() && !l.startsWith("#")), seen = new Set(), results = [];
+  const lines = csvText.split(/\r?\n/).filter(l => l.trim() && !l.startsWith("#"));
+  const byQuery = new Map();
+
   for (const line of lines) {
     const cols = line.includes("\t") ? line.split("\t") : line.split(",");
     if (cols.length < 11) continue;
     const qName = cols[0].replace(/^"|"$/g, "").trim();
-    if (seen.has(qName)) continue; seen.add(qName);
-    results.push({ queryName: qName, taxon: cols[1].replace(/^"|"$/g, "").trim(), accession: cols[1].replace(/^"|"$/g, "").trim(), identity: parseFloat(cols[2]).toFixed(2) + "%", coverage: "", evalue: `${cols[10]} / ${Math.round(parseFloat(cols[11] || "0"))}`, marker: "" });
+    if (!byQuery.has(qName)) byQuery.set(qName, []);
+    const arr = byQuery.get(qName);
+    if (arr.length >= 10) continue;
+
+    const subj = cols[1].replace(/^"|"$/g, "").trim();
+    arr.push({
+      rank: arr.length + 1,
+      taxon: subj,
+      hitDef: subj,
+      accession: subj,
+      identity: parseFloat(cols[2]).toFixed(2) + "%",
+      coverage: "",
+      evalue: `${cols[10]} / ${Math.round(parseFloat(cols[11] || "0"))}`,
+      marker: ""
+    });
   }
-  return results;
+
+  return Array.from(byQuery.entries()).map(([queryName, hits]) => ({ queryName, hits }));
 }
 
 /* ==========================================================================
@@ -1619,6 +1670,42 @@ function switchNotesTab(tab) {
   document.getElementById("notesTabGenbank").style.display = tab === "genbank" ? "block" : "none";
 }
 
+function renderNotesBlastHits(hits) {
+  const wrap = document.getElementById("noteBlastHitsWrap");
+  const tbody = document.getElementById("noteBlastHitsBody");
+  if (!wrap || !tbody) return;
+  if (!Array.isArray(hits) || !hits.length) {
+    wrap.style.display = "none";
+    tbody.innerHTML = "";
+    return;
+  }
+  wrap.style.display = "block";
+  tbody.innerHTML = hits.map((h, i) => `
+    <tr>
+      <td>${h.rank || (i + 1)}</td>
+      <td title="${escapeHtml(h.hitDef || h.taxon)}"><span class="notes-taxon">${escapeHtml(h.taxon)}</span></td>
+      <td class="mono-muted">${escapeHtml(h.accession)}</td>
+      <td>${escapeHtml(h.identity)}</td>
+      <td>${escapeHtml(h.coverage || "-")}</td>
+      <td class="mono-muted">${escapeHtml(h.evalue || "-")}</td>
+      <td><button class="btn-sm" onclick="useBlastHitAsPrimary(${i})">Use</button></td>
+    </tr>
+  `).join("");
+}
+
+function useBlastHitAsPrimary(idx) {
+  const obj = state.groups[notesTargetId] || state.samples[notesTargetId];
+  const h = obj?.notes?.blastHits?.[idx];
+  if (!h) return;
+  document.getElementById("noteTaxon").value = h.taxon || "";
+  document.getElementById("noteAccession").value = h.accession || "";
+  document.getElementById("noteIdentity").value = h.identity || "";
+  document.getElementById("noteCoverage").value = h.coverage || "";
+  document.getElementById("noteEvalue").value = h.evalue || "";
+  if (h.marker) document.getElementById("noteMarker").value = h.marker;
+  toast(`Loaded Hit #${idx + 1} (${h.taxon}) into primary fields`, "success");
+}
+
 function openNotesModal(id) {
   const obj = state.groups[id] || state.samples[id]; if (!obj) return;
   notesTargetId = id;
@@ -1638,12 +1725,14 @@ function openNotesModal(id) {
   document.getElementById("noteCollectionDate").value = n.collectionDate;
   document.getElementById("noteCollectedBy").value = n.collectedBy;
   document.getElementById("noteVoucher").value = n.voucher;
+  renderNotesBlastHits(n.blastHits);
   switchNotesTab("blast"); openModal("notesModal");
   document.getElementById("noteTaxon").focus();
 }
 
 function saveNotesModal() {
   const obj = state.groups[notesTargetId] || state.samples[notesTargetId]; if (!obj) return;
+  const existingHits = obj.notes?.blastHits || [];
   obj.notes = {
     taxon: document.getElementById("noteTaxon").value.trim(),
     accession: document.getElementById("noteAccession").value.trim(),
@@ -1659,7 +1748,8 @@ function saveNotesModal() {
     geoLoc: document.getElementById("noteGeoLoc").value.trim(),
     collectionDate: document.getElementById("noteCollectionDate").value.trim(),
     collectedBy: document.getElementById("noteCollectedBy").value.trim(),
-    voucher: document.getElementById("noteVoucher").value.trim()
+    voucher: document.getElementById("noteVoucher").value.trim(),
+    blastHits: existingHits
   };
   closeModal("notesModal"); renderTable(); persistDB();
   toast("Saved BLAST notes & GenBank modifiers", "success");
